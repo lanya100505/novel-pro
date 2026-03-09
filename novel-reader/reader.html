@@ -109,7 +109,7 @@
             text-align: justify;
         }
         #novel-content.fading { opacity: 0; }
-        #novel-content h2 { 
+        #novel-content h2, .chapter-box h2 { 
             font-size: 1.5em; margin: 4rem 0 2rem 0; 
             color: var(--accent-color); border-bottom: 1px solid var(--border-color);
             padding-bottom: 0.5rem; font-weight: 700;
@@ -399,6 +399,47 @@
     </div>
 
     <script>
+        // ---------------- 新增：HTML转义与DOM回收缓存 ----------------
+        window.loadedChaptersText = {}; // 用于沉浸长读的文本内存缓存
+        window.chapterObserver = null;  // IntersectionObserver实例
+
+        function escapeHTML(str) {
+            return str.replace(/[&<>'"]/g, tag => ({
+                '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+            }[tag] || tag));
+        }
+
+        function initChapterObserver() {
+            if (!window.chapterObserver) {
+                window.chapterObserver = new IntersectionObserver((entries) => {
+                    entries.forEach(entry => {
+                        const box = entry.target;
+                        const index = parseInt(box.dataset.index);
+                        if (entry.isIntersecting) {
+                            // 滚入可视区域（或附近）：恢复 DOM
+                            if (box.dataset.culled === 'true') {
+                                const chapter = chaptersData[index];
+                                const text = window.loadedChaptersText[index] || "";
+                                const isFirst = box === DOMElements.novelContent.firstElementChild;
+                                const prefix = isFirst ? `<h2 data-index="${index}">${chapter.title}</h2>` : `<hr><h2 data-index="${index}">${chapter.title}</h2>`;
+                                box.innerHTML = prefix + escapeHTML(text).replace(/\n/g, '<br>');
+                                box.style.height = 'auto'; // 恢复自适应高度
+                                box.dataset.culled = 'false';
+                            }
+                        } else {
+                            // 滚出可视区域很远：清理 DOM 释放内存
+                            if (box.dataset.culled !== 'true') {
+                                box.style.height = box.offsetHeight + 'px'; // 锁定高度，防止滚动条闪烁
+                                box.innerHTML = ''; // 清空内部 DOM 节点
+                                box.dataset.culled = 'true';
+                            }
+                        }
+                    });
+                }, { root: DOMElements.mainContent, rootMargin: '300% 0px' }); // 上下预留 3 个屏幕高度的缓冲区
+            }
+        }
+        // --------------------------------------------------------
+
         // 动态决定 API 基础地址
         const determineApiBaseUrl = () => {
             const hostname = window.location.hostname;
@@ -736,14 +777,23 @@
             DOMElements.novelTitle.textContent = chapter.title;
             try {
                 const text = await fetchChapterText(chapter.file);
+                window.loadedChaptersText[index] = text; // 存入内存
+                const escapedText = escapeHTML(text);    // 转义HTML
+                
                 let chapterHtml = "";
                 if (mode === 'mode-seamless-scroll') {
-                    chapterHtml = `<h2 data-index="${index}">${chapter.title}</h2>` + text.replace(/\n/g, '<br>');
+                    // 使用 .chapter-box 包裹章节，用于观察
+                    chapterHtml = `<div class="chapter-box" data-index="${index}" data-culled="false"><h2 data-index="${index}">${chapter.title}</h2>` + escapedText.replace(/\n/g, '<br>') + `</div>`;
                 } else {
-                    chapterHtml = text.replace(/\n/g, '<br>');
+                    chapterHtml = escapedText.replace(/\n/g, '<br>');
                 }
                 DOMElements.novelContent.innerHTML = chapterHtml;
+                
                 if (mode === 'mode-seamless-scroll') {
+                    initChapterObserver();
+                    if(window.chapterObserver) window.chapterObserver.disconnect(); // 清理旧观察
+                    window.chapterObserver.observe(DOMElements.novelContent.querySelector('.chapter-box'));
+                    
                     currentState.isLoadingNextChapter = false; 
                     if (supportsAdvancedCache) loadNextChapterSeamlessly(); 
                     else loadAllFollowingChapters(index);
@@ -808,14 +858,13 @@
                     const { scrollTop, scrollHeight, clientHeight } = DOMElements.mainContent;
                     const chapterIndex = currentState.currentChapterIndex;
                     chapterToSave = chaptersData[chapterIndex];
-                    const chapterTitles = Array.from(DOMElements.novelContent.querySelectorAll('h2'));
-                    let currentChapterH2 = chapterTitles.find(h2 => h2.textContent === chapterToSave.title);
-                    if (currentChapterH2) {
-                        const chapterTop = currentChapterH2.offsetTop;
-                        let nextElement = currentChapterH2.nextElementSibling;
-                        while(nextElement && nextElement.tagName !== 'H2' && nextElement.tagName !== 'HR') nextElement = nextElement.nextElementSibling;
-                        const nextElementTop = nextElement ? nextElement.offsetTop : scrollHeight;
-                        const chapterHeight = nextElementTop - chapterTop;
+                    
+                    const chapterBoxes = Array.from(DOMElements.novelContent.querySelectorAll('.chapter-box'));
+                    let currentBox = chapterBoxes.find(box => parseInt(box.dataset.index) === chapterIndex);
+                    
+                    if (currentBox) {
+                        const chapterTop = currentBox.offsetTop;
+                        const chapterHeight = currentBox.offsetHeight;
                         const scrollTopInChapter = scrollTop - chapterTop;
                         if (chapterHeight <= clientHeight) scrollPercent = 0;
                         else {
@@ -844,12 +893,13 @@
 
         async function loadNextChapterSeamlessly() {
             if (currentState.isLoadingNextChapter) return;
-            const loadedChapters = DOMElements.novelContent.querySelectorAll('h2');
-            if (loadedChapters.length === 0) return; 
-            const lastLoadedH2 = loadedChapters[loadedChapters.length - 1];
-            const lastLoadedIndex = parseInt(lastLoadedH2.dataset.index);
+            const loadedBoxes = DOMElements.novelContent.querySelectorAll('.chapter-box');
+            if (loadedBoxes.length === 0) return; 
+            const lastLoadedBox = loadedBoxes[loadedBoxes.length - 1];
+            const lastLoadedIndex = parseInt(lastLoadedBox.dataset.index);
             const nextIndex = lastLoadedIndex + 1;
             if (nextIndex < 0 || nextIndex >= chaptersData.length) return; 
+            
             currentState.isLoadingNextChapter = true;
             const chapter = chaptersData[nextIndex];
             const spinner = document.createElement('div');
@@ -858,8 +908,11 @@
             DOMElements.novelContent.appendChild(spinner);
             try {
                 const text = await fetchChapterText(chapter.file); 
-                const chapterHtml = `<hr><h2 data-index="${nextIndex}">${chapter.title}</h2>` + text.replace(/\n/g, '<br>');
+                window.loadedChaptersText[nextIndex] = text; // 存入内存
+                const escapedText = escapeHTML(text);
+                const chapterHtml = `<div class="chapter-box" data-index="${nextIndex}" data-culled="false"><hr><h2 data-index="${nextIndex}">${chapter.title}</h2>` + escapedText.replace(/\n/g, '<br>') + `</div>`;
                 spinner.insertAdjacentHTML('beforebegin', chapterHtml);
+                window.chapterObserver.observe(spinner.previousElementSibling); // 观察新章节节点
             } catch (e) {
                 spinner.innerHTML = '<span style="color:var(--danger-color)">加载失败</span>';
                 setTimeout(() => spinner.remove(), 2000);
@@ -884,8 +937,11 @@
                     const response = await fetch(getChapterUrl(chapter.file));
                     if (!response.ok) throw new Error();
                     const text = await response.text();
-                    const chapterHtml = `<hr><h2 data-index="${i}">${chapter.title}</h2>` + text.replace(/\n/g, '<br>');
+                    window.loadedChaptersText[i] = text; // 存入内存
+                    const escapedText = escapeHTML(text);
+                    const chapterHtml = `<div class="chapter-box" data-index="${i}" data-culled="false"><hr><h2 data-index="${i}">${chapter.title}</h2>` + escapedText.replace(/\n/g, '<br>') + `</div>`;
                     spinner.insertAdjacentHTML('beforebegin', chapterHtml);
+                    window.chapterObserver.observe(spinner.previousElementSibling); // 观察新节点
                     loadedCount++;
                     spinner.textContent = `加载全书... (${loadedCount}/${totalToLoad})`;
                 } catch (e) {
@@ -964,15 +1020,19 @@
                         currentState.isSeamlessScrolling = true;
                         requestAnimationFrame(() => {
                             const { scrollTop, scrollHeight, clientHeight } = DOMElements.mainContent;
-                            const chapterTitles = Array.from(DOMElements.novelContent.querySelectorAll('h2'));
-                            let currentChapterH2 = chapterTitles[0];
-                            for (let i = chapterTitles.length - 1; i >= 0; i--) {
-                                if (chapterTitles[i].offsetTop <= scrollTop + 20) { currentChapterH2 = chapterTitles[i]; break; }
+                            const chapterBoxes = Array.from(DOMElements.novelContent.querySelectorAll('.chapter-box'));
+                            let currentBox = chapterBoxes[0];
+                            
+                            // 倒序遍历，找到恰好进入可视区域的包裹框
+                            for (let i = chapterBoxes.length - 1; i >= 0; i--) {
+                                if (chapterBoxes[i].offsetTop <= scrollTop + 20) { currentBox = chapterBoxes[i]; break; }
                             }
-                            if (currentChapterH2) {
-                                const chapterIndex = parseInt(currentChapterH2.dataset.index);
-                                if (chapterIndex !== -1 && currentState.currentChapterIndex !== chapterIndex) {
-                                    currentState.currentChapterIndex = chapterIndex; updateActiveLink(chapterIndex); 
+                            
+                            if (currentBox) {
+                                const chapterIndex = parseInt(currentBox.dataset.index);
+                                if (!isNaN(chapterIndex) && currentState.currentChapterIndex !== chapterIndex) {
+                                    currentState.currentChapterIndex = chapterIndex; 
+                                    updateActiveLink(chapterIndex); 
                                 }
                             }
                             if (supportsAdvancedCache && (scrollTop + clientHeight >= scrollHeight - 200)) loadNextChapterSeamlessly();
