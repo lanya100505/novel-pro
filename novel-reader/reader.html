@@ -1,0 +1,1132 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>小说阅读器</title>
+    <style>
+        :root {
+            --main-bg: #fcfcfc;
+            --text-color: #2c3e50;
+            --sidebar-bg: #ffffff;
+            --link-color: #3498db;
+            --hover-bg: #f8f9fa;
+            --active-bg: #eff6ff;
+            --active-text: #2563eb;
+            --font-size: 18px;
+            --line-height: 1.9;
+            --nav-btn-bg: #ffffff;
+            --modal-bg: rgba(255, 255, 255, 0.95);
+            --border-color: #f1f5f9;
+            --shadow-light: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+            --shadow-heavy: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            --danger-color: #ef4444;
+            --accent-color: #3b82f6;
+            --reader-width: 850px;
+            --setting-btn-bg: #3b82f6; 
+        }
+        body.dark {
+            --main-bg: #18181b;
+            --text-color: #a1a1aa;
+            --sidebar-bg: #27272a;
+            --link-color: #60a5fa;
+            --hover-bg: #3f3f46;
+            --active-bg: #3f3f46;
+            --active-text: #60a5fa;
+            --nav-btn-bg: #27272a;
+            --modal-bg: rgba(39, 39, 42, 0.95);
+            --border-color: #3f3f46;
+            --shadow-light: 0 4px 6px -1px rgba(0, 0, 0, 0.3);
+            --shadow-heavy: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+            --danger-color: #f87171;
+            --accent-color: #60a5fa;
+            --setting-btn-bg: #3f3f46; 
+        }
+
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        html, body {
+            margin: 0; height: 100%; overflow: hidden;
+            font-family: "Merriweather", "Georgia", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: var(--main-bg); color: var(--text-color);
+            font-size: var(--font-size); line-height: var(--line-height);
+            transition: background 0.3s ease, color 0.3s ease;
+        }
+
+        /* 布局 */
+        .container { display: flex; height: 100vh; width: 100vw; }
+        
+        /* 侧边栏 */
+        .sidebar {
+            width: 320px; background: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            display: flex; flex-direction: column;
+            flex-shrink: 0; z-index: 100;
+            box-shadow: var(--shadow-light);
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .sidebar-header {
+            padding: 24px; font-weight: 800; font-size: 1.1em;
+            border-bottom: 1px solid var(--border-color);
+            text-align: center; color: var(--accent-color);
+            letter-spacing: 1px; text-transform: uppercase;
+        }
+        .chapter-list { 
+            list-style: none; padding: 12px; margin: 0; 
+            flex-grow: 1; overflow-y: auto; 
+        }
+        .chapter-list li a {
+            display: block; padding: 14px 20px; 
+            text-decoration: none; color: var(--text-color);
+            border-radius: 12px; margin-bottom: 4px;
+            transition: all 0.2s ease; font-size: 0.95rem;
+            font-weight: 500;
+        }
+        .chapter-list li a:hover { background: var(--hover-bg); transform: translateX(4px); }
+        .chapter-list li a.active { 
+            background: var(--active-bg); color: var(--active-text); font-weight: 700; 
+        }
+
+        /* 主阅读区 */
+        .main-content {
+            flex: 1; position: relative; height: 100%;
+            font-family: var(--reader-font, inherit);
+        }
+        
+        /* 标题 */
+        #novel-title {
+            font-size: 2em; font-weight: 800;
+            margin: 0 0 3rem 0; padding-bottom: 1.5rem;
+            border-bottom: 2px solid var(--border-color);
+            text-align: center; color: var(--text-color);
+            line-height: 1.3;
+        }
+        
+        /* 内容 */
+        #novel-content { 
+            white-space: pre-wrap; word-wrap: break-word;
+            transition: opacity 0.3s ease; opacity: 1;
+            text-align: justify;
+        }
+        #novel-content.fading { opacity: 0; }
+        #novel-content h2 { 
+            font-size: 1.5em; margin: 4rem 0 2rem 0; 
+            color: var(--accent-color); border-bottom: 1px solid var(--border-color);
+            padding-bottom: 0.5rem; font-weight: 700;
+        }
+        
+        /* --- 阅读模式特定样式 --- */
+        
+        /* 滚动模式 */
+        body[data-read-mode^="mode-original"] .main-content, 
+        body[data-read-mode^="mode-seamless"] .main-content {
+            overflow-y: auto; padding: 40px 10%;
+            scrollbar-width: thin;
+        }
+        
+        body[data-read-mode^="mode-original"] #novel-content, 
+        body[data-read-mode^="mode-seamless"] #novel-content {
+            max-width: var(--reader-width); margin: 0 auto; min-height: 80vh;
+        }
+        
+        /* 分页模式 */
+        body[data-read-mode="mode-slide"] .main-content, body[data-read-mode="mode-sim"] .main-content {
+            padding: 40px 10% 0 10%; display: flex; flex-direction: column;
+        }
+        body[data-read-mode="mode-slide"] #novel-content, body[data-read-mode="mode-sim"] #novel-content {
+            flex-grow: 1; overflow-x: auto; overflow-y: hidden;
+            column-width: 100%; column-gap: 0; height: calc(100% - 80px);
+            scroll-snap-type: x mandatory; scrollbar-width: none;
+            max-width: var(--reader-width); margin: 0 auto;
+        }
+        
+        /* 点击区域 */
+        .click-zone { position: absolute; top:0; bottom:0; width:20%; z-index:50; display:none; cursor: pointer; }
+        .click-zone.left { left:0; } .click-zone.right { right:0; }
+        body[data-read-mode="mode-slide"] .click-zone, body[data-read-mode="mode-sim"] .click-zone { display:block; }
+
+        /* 底部导航 (仅滚动模式) */
+        .navigation-footer {
+            display: none; justify-content: space-between; 
+            margin-top: 80px; padding: 40px 0; max-width: var(--reader-width); margin-left: auto; margin-right: auto;
+            border-top: 1px solid var(--border-color);
+        }
+        body[data-read-mode="mode-original-scroll"] .navigation-footer { display: flex; }
+        .nav-button {
+            padding: 14px 32px; border-radius: 50px;
+            background: var(--nav-btn-bg); border: 1px solid var(--border-color);
+            color: var(--text-color); text-decoration: none; font-weight: 600;
+            box-shadow: var(--shadow-light); transition: all 0.2s;
+        }
+        .nav-button:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-heavy);
+            border-color: var(--accent-color); color: var(--accent-color);
+        }
+
+        /* 悬浮按钮 */
+        .controls { position: fixed; bottom: 40px; right: 40px; z-index: 90; }
+        .control-btn {
+            width: 56px; height: 56px; border-radius: 28px;
+            background: var(--setting-btn-bg); 
+            color: white;
+            border: none; font-size: 24px; cursor: pointer;
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2); 
+            display: flex; align-items: center; justify-content: center;
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        .control-btn:hover { transform: scale(1.1) rotate(90deg); }
+        .control-btn:active { transform: scale(0.95); }
+        
+        .sidebar-toggle {
+            display: none; position: fixed; top: 20px; left: 20px; z-index: 101;
+            width: 44px; height: 44px; border-radius: 12px;
+            background: var(--nav-btn-bg); border: 1px solid var(--border-color);
+            font-size: 20px; cursor: pointer; box-shadow: var(--shadow-light);
+            color: var(--text-color); transition: all 0.2s;
+        }
+        .sidebar-toggle:active { transform: scale(0.9); }
+
+        /* 设置面板 */
+        .modal-backdrop {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.3); backdrop-filter: blur(8px);
+            z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.3s;
+        }
+        .modal-backdrop.visible { opacity: 1; pointer-events: auto; }
+        
+        .settings-modal {
+            position: fixed; bottom: 30px; left: 50%; transform: translate(-50%, 120%);
+            width: 90%; max-width: 560px; max-height: 85vh;
+            background: var(--modal-bg); color: var(--text-color);
+            border-radius: 28px; padding: 32px;
+            box-shadow: var(--shadow-heavy); z-index: 201;
+            overflow-y: auto; transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            border: 1px solid var(--border-color);
+        }
+        .settings-modal.visible { transform: translate(-50%, 0); }
+        
+        .settings-modal h3 { 
+            margin: 0 0 24px 0; text-align: center; font-size: 1.4em; 
+            font-weight: 800; color: var(--text-color); opacity: 0.9;
+        }
+        .setting-group { margin-bottom: 28px; }
+        .setting-group label { 
+            display: block; margin-bottom: 12px; font-weight: 700; 
+            font-size: 0.85em; opacity: 0.6; text-transform: uppercase; letter-spacing: 1px;
+        }
+        
+        .btn-group { display: flex; gap: 12px; flex-wrap: wrap; }
+        .btn-group button, .btn-group select {
+            flex: 1; padding: 14px; min-width: 100px;
+            border: 1px solid var(--border-color); border-radius: 14px;
+            background: var(--main-bg); color: var(--text-color);
+            font-size: 0.95em; cursor: pointer; outline: none;
+            transition: all 0.2s; font-weight: 500;
+        }
+        .btn-group button:hover, .btn-group select:hover { 
+            background: var(--hover-bg); border-color: var(--accent-color);
+        }
+        .btn-group button.active {
+            background: var(--accent-color); color: white; 
+            border-color: var(--accent-color); font-weight: 700;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2);
+        }
+        .btn-group button:disabled { opacity: 0.5; cursor: not-allowed; filter: grayscale(100%); }
+        
+        .font-size-control { 
+            display: flex; align-items: center; justify-content: space-between;
+            background: var(--main-bg); padding: 6px; border-radius: 16px;
+            border: 1px solid var(--border-color);
+        }
+        .font-size-control button {
+            width: 48px; height: 48px; border: none; background: transparent;
+            font-size: 1.2em; cursor: pointer; color: var(--text-color);
+            border-radius: 12px; transition: background 0.2s;
+        }
+        .font-size-control button:hover { background: var(--hover-bg); color: var(--accent-color); }
+        .font-size-control span { font-weight: 800; font-size: 1.1em; }
+        
+        .progress-container { 
+            height: 8px; background: var(--border-color); 
+            border-radius: 4px; margin-top: 16px; overflow: hidden; 
+        }
+        .progress-bar { height: 100%; background: var(--accent-color); width: 0; transition: width 0.3s ease; }
+        .spinner {
+            width: 24px; height: 24px; border: 3px solid rgba(0,0,0,0.1);
+            border-top-color: var(--accent-color); border-radius: 50%;
+            animation: spin 0.8s linear infinite; margin: 20px auto;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* 移动端适配 */
+        @media (max-width: 768px) {
+            .sidebar { position: fixed; top: 0; left: 0; height: 100%; transform: translateX(-100%); width: 85%; max-width: 320px; }
+            .sidebar.visible { transform: translateX(0); box-shadow: 0 0 100px rgba(0,0,0,0.5); }
+            
+            body[data-read-mode^="mode-original"] .main-content, 
+            body[data-read-mode^="mode-seamless"] .main-content {
+                padding: 80px 20px 20px 20px;
+            }
+            
+            #novel-content { max-width: 100% !important; }
+            #novel-title { font-size: 1.5em; margin-bottom: 20px; }
+            .navigation-footer { margin-top: 40px; }
+            
+            .settings-modal { bottom: 0; left: 0; right: 0; width: 100%; max-width: none; border-radius: 28px 28px 0 0; transform: translateY(100%); padding: 30px 24px; }
+            .settings-modal.visible { transform: translateY(0); }
+            
+            body[data-read-mode="mode-slide"] .main-content, body[data-read-mode="mode-sim"] .main-content {
+                padding: 80px 20px 0 20px !important;
+            }
+            .sidebar-toggle { display: block; }
+
+            .controls { bottom: 20px; right: 20px; }
+            .control-btn {
+                width: 42px;  
+                height: 42px;
+                font-size: 20px; 
+                border-radius: 50%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 安全门禁：无Token者将被拒之门外 -->
+    <script>
+        const authToken = sessionStorage.getItem('reader_token');
+        if (!authToken) {
+            window.location.replace('index.html'); // 跳转到登录/门禁页
+        }
+    </script>
+
+    <div id="app"></div>
+    <div id="modal-container" class="hidden"></div>
+    
+    <button class="sidebar-toggle" id="sidebar-toggle">☰</button>
+    
+    <div class="container">
+        <div class="sidebar" id="sidebar">
+            <div class="sidebar-header">目录</div>
+            <ul class="chapter-list" id="chapter-list"></ul>
+        </div>
+        
+        <div class="main-content" id="main-content">
+            <div class="click-zone left" id="click-zone-left"></div>
+            <div class="click-zone right" id="click-zone-right"></div>
+            
+            <h1 id="novel-title"></h1>
+            <div id="novel-content"></div>
+            
+            <!-- 仅滚动模式显示 -->
+            <div class="navigation-footer">
+                <a href="#" id="prev-chapter" class="nav-button">← 上一章</a>
+                <a href="#" id="next-chapter" class="nav-button">下一章 →</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button id="settings-btn" class="control-btn">⚙️</button>
+    </div>
+    
+    <input type="file" id="font-uploader" accept=".ttf,.otf,.woff,.woff2" style="display: none;">
+
+    <!-- 设置弹窗 -->
+    <div class="modal-backdrop" id="modal-backdrop"></div>
+    <div class="settings-modal" id="settings-modal">
+        <h3>阅读设置</h3>
+        
+        <div class="setting-group">
+            <label>🎨 主题风格</label>
+            <div class="btn-group">
+                <button id="theme-light-btn">☀️ 舒适白</button>
+                <button id="theme-dark-btn">🌙 深邃黑</button>
+            </div>
+        </div>
+        
+        <div class="setting-group">
+            <label>📖 阅读模式</label>
+            <div class="btn-group">
+                <select id="read-mode-select">
+                    <option value="mode-original-scroll">📜 经典滚动</option>
+                    <option value="mode-seamless-scroll">♾️ 沉浸长读</option>
+                    <option value="mode-slide" disabled>↔️ 平移翻页 (维护)</option>
+                    <option value="mode-sim" disabled>📄 仿真翻页 (维护)</option>
+                </select>
+            </div>
+        </div>
+        
+        <div class="setting-group">
+            <label>🔤 字体样式</label>
+            <div class="btn-group">
+                <select id="font-family-select">
+                    <option value='-apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif'>🖥️ 系统默认</option>
+                    <option value='"Kaiti", "STKaiti", "Kai Regular", "楷体", serif'>🖌️ 优雅楷体</option>
+                    <option value='"SongTi", "STSong", "SimSun", "宋体", serif'>📝 经典宋体</option>
+                    <option value='"Heiti", "STHeiti", "SimHei", "黑体", "Microsoft YaHei", sans-serif'>🖊️ 现代黑体</option>
+                    <option value="CustomFont" id="custom-font-option" style="display: none;">📂 我的字体</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="setting-group" id="custom-font-group">
+            <label>📂 自定义字体</label>
+            <div class="btn-group">
+                <button id="upload-font-btn">📤 上传字体文件</button>
+                <button id="clear-font-btn" style="display: none; color: var(--danger-color); border-color: var(--danger-color);">🗑️ 删除</button>
+            </div>
+        </div>
+        
+        <div class="setting-group">
+            <label>Aa 字号大小</label>
+            <div class="font-size-control">
+                <button id="font-decrease">A-</button>
+                <span id="font-size-display">18px</span>
+                <button id="font-increase">A+</button>
+            </div>
+        </div>
+        
+        <div class="setting-group" id="chapter-cache-group">
+            <label>☁️ 离线缓存</label>
+            <div class="btn-group">
+                <button id="cache-all-btn">📥 下载全本</button>
+                <button id="clear-cache-btn" style="color: var(--danger-color); border-color: var(--danger-color);">🗑️ 清除数据</button>
+            </div>
+            <div class="progress-container"><div class="progress-bar" id="cache-progress-bar"></div></div>
+            <small id="cache-status" style="display:block; text-align:center; margin-top:8px; color:var(--text-color); opacity:0.5;"></small>
+        </div>
+    </div>
+
+    <script>
+        // 动态决定 API 基础地址
+        const determineApiBaseUrl = () => {
+            const hostname = window.location.hostname;
+            if (hostname.includes('505616.xyz')) {
+                return "https://novel-pro.505616.xyz";
+            } else if (hostname.includes('zzsp.me')) {
+                return "https://novel-pro.zzsp.me";
+            } else if (hostname.includes('620100.xyz')) {
+                return "https://www.620100.xyz"; // 新域名适配
+            } else {
+                return "https://novel-pro.20100505.xyz";
+            }
+        };
+
+        const config = { 
+            novel_id: "yrnbwsc", 
+            API_BASE_URL: determineApiBaseUrl(), 
+            CACHE_NAME: `novel-cache-${"yrnbwsc"}`
+        };
+        const CACHE_BATCH_SIZE = 50; 
+
+        // 占位符，由 update_chapters.py 脚本替换
+        const chaptersData = [
+    {
+        "file": "001_观前须知.txt",
+        "title": "001_观前须知"
+    }
+];
+        
+        const supportsAdvancedCache = ('caches' in window) && ('indexedDB' in window);
+
+        let db = null;
+        const DB_NAME = 'novelReaderDB';
+        const DB_VERSION = 1;
+        const FONT_STORE_NAME = 'customFonts';
+        const CUSTOM_FONT_KEY = 'CustomFont';
+
+        let currentState = {
+            currentChapterIndex: 0,
+            apiToken: sessionStorage.getItem('reader_token'), // 使用 Session Storage 中的 Token
+            isSaving: false,
+            saveTimeout: null,
+            isLoadingNextChapter: false,
+            isSeamlessScrolling: false, 
+            settings: {
+                theme: 'light',
+                fontSize: 18,
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif',
+                readMode: 'mode-original-scroll' 
+            },
+            touchState: { startX: 0, startY: 0, isSwiping: false },
+            pagination: { currentPage: 0, totalPages: 0, pageWidth: 0, isAnimating: false }
+        };
+        
+        const DOMElements = {
+            body: document.body,
+            chapterList: document.getElementById('chapter-list'),
+            novelTitle: document.getElementById('novel-title'),
+            novelContent: document.getElementById('novel-content'),
+            mainContent: document.getElementById('main-content'),
+            sidebar: document.getElementById('sidebar'),
+            sidebarToggle: document.getElementById('sidebar-toggle'),
+            prevBtn: document.getElementById('prev-chapter'),
+            nextBtn: document.getElementById('next-chapter'),
+            clickZoneLeft: document.getElementById('click-zone-left'),
+            clickZoneRight: document.getElementById('click-zone-right'),
+            settingsBtn: document.getElementById('settings-btn'),
+            modalBackdrop: document.getElementById('modal-backdrop'),
+            settingsModal: document.getElementById('settings-modal'),
+            themeLightBtn: document.getElementById('theme-light-btn'),
+            themeDarkBtn: document.getElementById('theme-dark-btn'),
+            readModeSelect: document.getElementById('read-mode-select'),
+            fontFamilySelect: document.getElementById('font-family-select'),
+            fontIncrease: document.getElementById('font-increase'),
+            fontDecrease: document.getElementById('font-decrease'),
+            fontSizeDisplay: document.getElementById('font-size-display'),
+            chapterCacheGroup: document.getElementById('chapter-cache-group'),
+            cacheAllBtn: document.getElementById('cache-all-btn'),
+            clearCacheBtn: document.getElementById('clear-cache-btn'),
+            cacheStatus: document.getElementById('cache-status'),
+            cacheProgressBar: document.getElementById('cache-progress-bar'),
+            customFontGroup: document.getElementById('custom-font-group'),
+            fontUploader: document.getElementById('font-uploader'),
+            uploadFontBtn: document.getElementById('upload-font-btn'),
+            clearFontBtn: document.getElementById('clear-font-btn'),
+            customFontOption: document.getElementById('custom-font-option')
+        };
+        
+        // --- DB Logic ---
+        function initDB() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+                request.onupgradeneeded = (event) => {
+                    const dbInstance = event.target.result;
+                    if (!dbInstance.objectStoreNames.contains(FONT_STORE_NAME)) {
+                        dbInstance.createObjectStore(FONT_STORE_NAME, { keyPath: 'id' });
+                    }
+                };
+                request.onsuccess = (event) => { db = event.target.result; resolve(db); };
+                request.onerror = (event) => reject(event.target.errorCode);
+            });
+        }
+
+        function saveFontToDB(arrayBuffer) {
+            return new Promise((resolve, reject) => {
+                if (!db) return reject('DB not initialized');
+                const transaction = db.transaction([FONT_STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(FONT_STORE_NAME);
+                const request = store.put({ id: CUSTOM_FONT_KEY, fontData: arrayBuffer });
+                request.onsuccess = () => {
+                    loadCustomFontFromDB().then(() => {
+                        applySettings({ fontFamily: 'CustomFont' });
+                        resolve();
+                    });
+                };
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+
+        function loadCustomFontFromDB() {
+            return new Promise((resolve, reject) => {
+                if (!db) return reject('DB not initialized');
+                const transaction = db.transaction([FONT_STORE_NAME], 'readonly');
+                const store = transaction.objectStore(FONT_STORE_NAME);
+                const request = store.get(CUSTOM_FONT_KEY);
+                request.onsuccess = (event) => {
+                    const result = event.target.result;
+                    if (result && result.fontData) {
+                        const blob = new Blob([result.fontData], { type: 'font/ttf' });
+                        const fontUrl = URL.createObjectURL(blob);
+                        const styleId = 'custom-font-style';
+                        let styleEl = document.getElementById(styleId);
+                        if (!styleEl) {
+                            styleEl = document.createElement('style');
+                            styleEl.id = styleId;
+                            document.head.appendChild(styleEl);
+                        }
+                        styleEl.innerHTML = `@font-face { font-family: 'CustomFont'; src: url('${fontUrl}'); }`;
+                        DOMElements.customFontOption.style.display = 'block';
+                        DOMElements.clearFontBtn.style.display = 'inline-block';
+                        resolve(true);
+                    } else {
+                        DOMElements.customFontOption.style.display = 'none';
+                        DOMElements.clearFontBtn.style.display = 'none';
+                        resolve(false);
+                    }
+                };
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+        
+        function clearCustomFont() {
+            return new Promise((resolve, reject) => {
+                if (!db) return reject('DB not initialized');
+                const transaction = db.transaction([FONT_STORE_NAME], 'readwrite');
+                const store = transaction.objectStore(FONT_STORE_NAME);
+                const request = store.delete(CUSTOM_FONT_KEY);
+                request.onsuccess = () => {
+                    const styleEl = document.getElementById('custom-font-style');
+                    if (styleEl) styleEl.innerHTML = '';
+                    DOMElements.customFontOption.style.display = 'none';
+                    DOMElements.clearFontBtn.style.display = 'none';
+                    if (currentState.settings.fontFamily === 'CustomFont') {
+                        applySettings({ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif' });
+                    }
+                    resolve();
+                };
+                request.onerror = (event) => reject(event.target.error);
+            });
+        }
+        
+        function handleFontUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                saveFontToDB(e.target.result).catch(err => alert('保存字体失败: ' + err.message));
+            };
+            reader.onerror = () => alert('读取文件失败');
+            reader.readAsArrayBuffer(file);
+            event.target.value = null;
+        }
+
+        // --- Cache Logic ---
+        function getChapterUrl(filename) { return `./novel/${filename}`; }
+
+        async function cacheAllAssets() {
+            DOMElements.cacheAllBtn.disabled = true;
+            DOMElements.clearCacheBtn.disabled = true;
+            DOMElements.cacheStatus.textContent = '🚀 准备下载...';
+            DOMElements.cacheProgressBar.style.width = '0%';
+            
+            try {
+                const cache = await caches.open(config.CACHE_NAME);
+                const chapterUrls = chaptersData.map(c => getChapterUrl(c.file));
+                const totalAssets = chapterUrls.length;
+                let cachedCount = 0;
+
+                for (let i = 0; i < totalAssets; i += CACHE_BATCH_SIZE) {
+                    const batch = chapterUrls.slice(i, i + CACHE_BATCH_SIZE);
+                    const promises = batch.map(url => 
+                        fetch(url).then(response => {
+                            if (!response.ok) throw new Error(`下载失败`);
+                            return cache.put(url, response);
+                        }).then(() => { 
+                            cachedCount++; 
+                            requestAnimationFrame(() => {
+                                const percent = (cachedCount / totalAssets) * 100;
+                                DOMElements.cacheProgressBar.style.width = `${percent}%`;
+                                DOMElements.cacheStatus.textContent = `🔥 正在高速缓存... (${cachedCount}/${totalAssets})`;
+                            });
+                        }).catch(console.error)
+                    );
+                    await Promise.all(promises);
+                }
+                DOMElements.cacheStatus.textContent = `✅ 全本缓存完毕! (共${cachedCount}章)`;
+            } catch (error) {
+                DOMElements.cacheStatus.textContent = `❌ 缓存出错，请重试`;
+            } finally {
+                DOMElements.cacheAllBtn.disabled = false;
+                DOMElements.clearCacheBtn.disabled = false;
+                updateCacheStatus();
+            }
+        }
+
+        async function clearCache() {
+            DOMElements.cacheStatus.textContent = '清除中...';
+            try {
+                await caches.delete(config.CACHE_NAME);
+                DOMElements.cacheStatus.textContent = '缓存已清除';
+                DOMElements.cacheProgressBar.style.width = '0%';
+            } catch (e) { DOMElements.cacheStatus.textContent = '清除失败'; }
+            updateCacheStatus();
+        }
+
+        async function updateCacheStatus() {
+            if (!chaptersData || chaptersData.length === 0) return;
+            const cache = await caches.open(config.CACHE_NAME);
+            const allAssets = chaptersData.map(c => getChapterUrl(c.file));
+            let cachedCount = 0;
+            for (const url of allAssets) { if (await cache.match(url)) cachedCount++; }
+            
+            if (cachedCount === 0) {
+                DOMElements.cacheStatus.textContent = '未缓存';
+                DOMElements.cacheAllBtn.textContent = '📥 缓存全本';
+                DOMElements.cacheAllBtn.disabled = false;
+                DOMElements.clearCacheBtn.style.display = 'none';
+            } else if (cachedCount === allAssets.length) {
+                DOMElements.cacheStatus.textContent = `✅ 已缓存全本 (${cachedCount}章)`;
+                DOMElements.cacheAllBtn.textContent = '已完成';
+                DOMElements.cacheAllBtn.disabled = true;
+                DOMElements.clearCacheBtn.style.display = 'inline-block';
+            } else {
+                DOMElements.cacheStatus.textContent = `⚡ 已缓存 ${cachedCount}/${allAssets.length}`;
+                DOMElements.cacheAllBtn.textContent = '继续缓存';
+                DOMElements.cacheAllBtn.disabled = false;
+                DOMElements.clearCacheBtn.style.display = 'inline-block';
+            }
+        }
+        
+        async function fetchChapterText(filename) {
+            const url = getChapterUrl(filename);
+            if (!supportsAdvancedCache) {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('网络请求失败');
+                return await response.text();
+            }
+            const cache = await caches.open(config.CACHE_NAME);
+            const cachedResponse = await cache.match(url);
+            if (cachedResponse) return await cachedResponse.text();
+            try {
+                const response = await fetch(url);
+                if (!response.ok) throw new Error('网络请求失败');
+                await cache.put(url, response.clone()); 
+                return await response.text();
+            } catch (e) { throw new Error('加载失败'); }
+        }
+
+        async function apiRequest(endpoint, method = 'GET', body = null) { 
+            if (!currentState.apiToken) { 
+                console.warn('未认证'); 
+                // Token 无效或过期，强制踢回门禁
+                window.location.replace('index.html'); 
+                return Promise.reject('Not authenticated'); 
+            } 
+            const headers = { 'Content-Type': 'application/json', 'Authorization': `Bearer ${currentState.apiToken}` }; 
+            const options = { method, headers, body: body ? JSON.stringify(body) : null }; 
+            try {
+                const response = await fetch(`${config.API_BASE_URL}/api/${endpoint}`, options); 
+                if (response.status === 401) {
+                    // 401 Unauthorized, Token 可能过期
+                    sessionStorage.removeItem('reader_token');
+                    window.location.replace('index.html');
+                    throw new Error('认证已过期');
+                }
+                if (!response.ok) { 
+                    const errorData = await response.json().catch(() => ({ error: `HTTP Error ${response.status}` })); 
+                    throw new Error(errorData.error || `API请求失败`); 
+                } 
+                return response.status === 204 ? null : response.json(); 
+            } catch(e) {
+                console.error(e);
+                throw e;
+            }
+        }
+        
+        function getCurrentChapter() { return chaptersData[currentState.currentChapterIndex]; }
+        
+        function updateActiveLink(index) {
+            document.querySelectorAll('.chapter-list a.active').forEach(a => a.classList.remove('active'));
+            const activeLink = document.querySelector(`.chapter-list a[data-index='${index}']`);
+            if (activeLink) { activeLink.classList.add('active'); activeLink.scrollIntoView({ block: 'center' }); }
+        }
+
+        function updateURL(index) {
+            if (currentState.settings.readMode === 'mode-original-scroll') {
+                if (new URLSearchParams(window.location.search).get('chapter') != index) { 
+                    history.pushState(null, '', `?chapter=${index}`); 
+                }
+            }
+        }
+
+        async function loadChapter(index, scrollPosition = 0, direction = 'none') {
+            if (index < 0 || index >= chaptersData.length) return;
+            currentState.currentChapterIndex = index; 
+            const chapter = chaptersData[index];
+            const mode = currentState.settings.readMode;
+            const isPaging = mode === 'mode-slide' || mode === 'mode-sim';
+            
+            if (isPaging && direction !== 'none' && mode === 'mode-sim') {
+                DOMElements.novelContent.classList.add('fading');
+                await new Promise(r => setTimeout(r, 150));
+            }
+
+            DOMElements.novelTitle.textContent = chapter.title;
+            try {
+                const text = await fetchChapterText(chapter.file);
+                let chapterHtml = "";
+                if (mode === 'mode-seamless-scroll') {
+                    chapterHtml = `<h2 data-index="${index}">${chapter.title}</h2>` + text.replace(/\n/g, '<br>');
+                } else {
+                    chapterHtml = text.replace(/\n/g, '<br>');
+                }
+                DOMElements.novelContent.innerHTML = chapterHtml;
+                if (mode === 'mode-seamless-scroll') {
+                    currentState.isLoadingNextChapter = false; 
+                    if (supportsAdvancedCache) loadNextChapterSeamlessly(); 
+                    else loadAllFollowingChapters(index);
+                }
+            } catch (e) { 
+                DOMElements.novelContent.innerHTML = `加载失败<br><small>${e.message}</small>`; 
+            }
+
+            applyReadModeLayout(scrollPosition, direction);
+            updateActiveLink(index);
+            localStorage.setItem(`${config.novel_id}_lastChapter`, index);
+            updateURL(index); 
+            DOMElements.prevBtn.classList.toggle('disabled', index === 0);
+            DOMElements.nextBtn.classList.toggle('disabled', index >= chaptersData.length - 1);
+        }
+        
+        function applyReadModeLayout(scrollPosition = 0, direction = 'none') {
+            const mode = currentState.settings.readMode;
+            const isPaging = mode === 'mode-slide' || mode === 'mode-sim';
+            
+            setTimeout(() => {
+                const main = DOMElements.mainContent;
+                const content = DOMElements.novelContent;
+                if (!isPaging) {
+                    main.scrollTop = 0; content.scrollLeft = 0; 
+                    const scrollHeight = main.scrollHeight, clientHeight = main.clientHeight;
+                    main.scrollTop = (scrollPosition / 100) * (scrollHeight - clientHeight);
+                    content.classList.remove('fading');
+                    currentState.pagination = { currentPage: 0, totalPages: 0, pageWidth: 0, isAnimating: false };
+                } else {
+                    main.scrollTop = 0; content.scrollLeft = 0; 
+                    const pageWidth = content.clientWidth;
+                    const totalWidth = content.scrollWidth;
+                    const totalPages = Math.max(1, Math.round(totalWidth / pageWidth));
+                    let targetPage = 0;
+                    if (direction === 'prev') targetPage = totalPages - 1;
+                    else if (scrollPosition > 0) targetPage = Math.round((scrollPosition / 100) * (totalPages - 1));
+                    if (targetPage >= totalPages) targetPage = totalPages - 1;
+                    if (targetPage < 0) targetPage = 0;
+                    currentState.pagination = { currentPage: targetPage, totalPages, pageWidth, isAnimating: false };
+                    content.scrollLeft = targetPage * pageWidth;
+                    if (mode === 'mode-sim' && direction !== 'none') setTimeout(() => content.classList.remove('fading'), 50);
+                    else content.classList.remove('fading');
+                }
+                saveProgress();
+            }, 200);
+        }
+
+        async function saveProgress() {
+            if (currentState.isSaving || !chaptersData.length || !currentState.apiToken) return;
+            currentState.isSaving = true;
+            try {
+                const mode = currentState.settings.readMode;
+                let scrollPercent = 0;
+                let chapterToSave = chaptersData[currentState.currentChapterIndex];
+                if (!chapterToSave) { currentState.isSaving = false; return; }
+
+                if (mode === 'mode-original-scroll') {
+                    const { scrollTop, scrollHeight, clientHeight } = DOMElements.mainContent;
+                    scrollPercent = clientHeight >= scrollHeight ? 0 : (scrollTop / (scrollHeight - clientHeight)) * 100;
+                } else if (mode === 'mode-seamless-scroll') {
+                    const { scrollTop, scrollHeight, clientHeight } = DOMElements.mainContent;
+                    const chapterIndex = currentState.currentChapterIndex;
+                    chapterToSave = chaptersData[chapterIndex];
+                    const chapterTitles = Array.from(DOMElements.novelContent.querySelectorAll('h2'));
+                    let currentChapterH2 = chapterTitles.find(h2 => h2.textContent === chapterToSave.title);
+                    if (currentChapterH2) {
+                        const chapterTop = currentChapterH2.offsetTop;
+                        let nextElement = currentChapterH2.nextElementSibling;
+                        while(nextElement && nextElement.tagName !== 'H2' && nextElement.tagName !== 'HR') nextElement = nextElement.nextElementSibling;
+                        const nextElementTop = nextElement ? nextElement.offsetTop : scrollHeight;
+                        const chapterHeight = nextElementTop - chapterTop;
+                        const scrollTopInChapter = scrollTop - chapterTop;
+                        if (chapterHeight <= clientHeight) scrollPercent = 0;
+                        else {
+                            const effectiveScroll = Math.max(0, scrollTopInChapter);
+                            const effectiveHeight = Math.max(1, chapterHeight - clientHeight);
+                            scrollPercent = (effectiveScroll / effectiveHeight) * 100;
+                        }
+                        scrollPercent = Math.max(0, Math.min(100, scrollPercent));
+                    } else {
+                        scrollPercent = (scrollTop / (scrollHeight - clientHeight)) * 100;
+                    }
+                } else { 
+                    const { currentPage, totalPages } = currentState.pagination;
+                    scrollPercent = (totalPages > 1) ? (currentPage / (totalPages - 1)) * 100 : 0;
+                }
+                
+                await apiRequest('progress', 'POST', {
+                    novel_id: config.novel_id,
+                    chapter_id: chapterToSave.file, 
+                    position: parseFloat(scrollPercent.toFixed(2)),
+                    chapter_title: chapterToSave.title
+                });
+            } catch (error) { console.error("保存进度失败:", error); } 
+            finally { currentState.isSaving = false; }
+        }
+
+        async function loadNextChapterSeamlessly() {
+            if (currentState.isLoadingNextChapter) return;
+            const loadedChapters = DOMElements.novelContent.querySelectorAll('h2');
+            if (loadedChapters.length === 0) return; 
+            const lastLoadedH2 = loadedChapters[loadedChapters.length - 1];
+            const lastLoadedIndex = parseInt(lastLoadedH2.dataset.index);
+            const nextIndex = lastLoadedIndex + 1;
+            if (nextIndex < 0 || nextIndex >= chaptersData.length) return; 
+            currentState.isLoadingNextChapter = true;
+            const chapter = chaptersData[nextIndex];
+            const spinner = document.createElement('div');
+            spinner.id = 'seamless-loader';
+            spinner.innerHTML = '<div class="spinner"></div><span>加载下一章...</span>';
+            DOMElements.novelContent.appendChild(spinner);
+            try {
+                const text = await fetchChapterText(chapter.file); 
+                const chapterHtml = `<hr><h2 data-index="${nextIndex}">${chapter.title}</h2>` + text.replace(/\n/g, '<br>');
+                spinner.insertAdjacentHTML('beforebegin', chapterHtml);
+            } catch (e) {
+                spinner.innerHTML = '<span style="color:var(--danger-color)">加载失败</span>';
+                setTimeout(() => spinner.remove(), 2000);
+            } finally {
+                if(DOMElements.novelContent.contains(spinner)) spinner.remove();
+                currentState.isLoadingNextChapter = false;
+            }
+        }
+        
+        async function loadAllFollowingChapters(startIndex) {
+            if (currentState.isLoadingNextChapter) return;
+            currentState.isLoadingNextChapter = true;
+            const spinner = document.createElement('div');
+            spinner.id = 'seamless-loader';
+            spinner.textContent = '开始加载全书...';
+            DOMElements.novelContent.appendChild(spinner);
+            const totalToLoad = chaptersData.length - 1 - startIndex;
+            let loadedCount = 0;
+            for (let i = startIndex + 1; i < chaptersData.length; i++) {
+                const chapter = chaptersData[i];
+                try {
+                    const response = await fetch(getChapterUrl(chapter.file));
+                    if (!response.ok) throw new Error();
+                    const text = await response.text();
+                    const chapterHtml = `<hr><h2 data-index="${i}">${chapter.title}</h2>` + text.replace(/\n/g, '<br>');
+                    spinner.insertAdjacentHTML('beforebegin', chapterHtml);
+                    loadedCount++;
+                    spinner.textContent = `加载全书... (${loadedCount}/${totalToLoad})`;
+                } catch (e) {
+                    spinner.textContent = `加载中断`;
+                    currentState.isLoadingNextChapter = false;
+                    return; 
+                }
+            }
+            spinner.remove();
+            currentState.isLoadingNextChapter = false;
+        }
+
+        async function navigatePage(direction) {
+            const mode = currentState.settings.readMode;
+            if (mode !== 'mode-slide' && mode !== 'mode-sim') return;
+            if (currentState.pagination.isAnimating) return;
+            currentState.pagination.isAnimating = true;
+            const { currentPage, totalPages, pageWidth } = currentState.pagination;
+            const content = DOMElements.novelContent;
+            if (direction === 'next') {
+                const nextPage = currentPage + 1;
+                if (nextPage < totalPages) {
+                    currentState.pagination.currentPage = nextPage;
+                    if (mode === 'mode-sim') {
+                        content.classList.add('fading');
+                        await new Promise(r => setTimeout(r, 150));
+                        content.scrollTo({ left: nextPage * pageWidth, behavior: 'auto' });
+                        content.classList.remove('fading');
+                    } else {
+                        content.scrollTo({ left: nextPage * pageWidth, behavior: 'smooth' });
+                    }
+                    saveProgress();
+                } else {
+                    if(!DOMElements.nextBtn.classList.contains('disabled')) loadChapter(currentState.currentChapterIndex + 1, 0, 'next');
+                }
+            } else {
+                const prevPage = currentPage - 1;
+                if (prevPage >= 0) {
+                    currentState.pagination.currentPage = prevPage;
+                    if (mode === 'mode-sim') {
+                        content.classList.add('fading');
+                        await new Promise(r => setTimeout(r, 150));
+                        content.scrollTo({ left: prevPage * pageWidth, behavior: 'auto' });
+                        content.classList.remove('fading');
+                    } else {
+                         content.scrollTo({ left: prevPage * pageWidth, behavior: 'smooth' });
+                    }
+                    saveProgress();
+                } else {
+                    if(!DOMElements.prevBtn.classList.contains('disabled')) loadChapter(currentState.currentChapterIndex - 1, 0, 'prev'); 
+                }
+            }
+            setTimeout(() => { currentState.pagination.isAnimating = false; }, 300);
+        }
+
+        function setupEventListeners() {
+            DOMElements.chapterList.addEventListener('click', e => { 
+                if (e.target.tagName === 'A') { 
+                    e.preventDefault(); 
+                    loadChapter(parseInt(e.target.dataset.index), 0, 'none'); 
+                    if (window.innerWidth <= 768) DOMElements.sidebar.classList.remove('visible'); 
+                } 
+            });
+            DOMElements.mainContent.addEventListener('click', e => {
+                if (window.innerWidth <= 768 && DOMElements.sidebar.classList.contains('visible')) {
+                    if (e.target !== DOMElements.clickZoneLeft && e.target !== DOMElements.clickZoneRight) DOMElements.sidebar.classList.remove('visible');
+                }
+            });
+            const scrollableElements = [DOMElements.mainContent, DOMElements.novelContent];
+            scrollableElements.forEach(el => {
+                el.addEventListener('scroll', () => {
+                    clearTimeout(currentState.saveTimeout); 
+                    currentState.saveTimeout = setTimeout(saveProgress, 3000);
+                    if (currentState.settings.readMode === 'mode-seamless-scroll') {
+                        if (currentState.isSeamlessScrolling) return;
+                        currentState.isSeamlessScrolling = true;
+                        requestAnimationFrame(() => {
+                            const { scrollTop, scrollHeight, clientHeight } = DOMElements.mainContent;
+                            const chapterTitles = Array.from(DOMElements.novelContent.querySelectorAll('h2'));
+                            let currentChapterH2 = chapterTitles[0];
+                            for (let i = chapterTitles.length - 1; i >= 0; i--) {
+                                if (chapterTitles[i].offsetTop <= scrollTop + 20) { currentChapterH2 = chapterTitles[i]; break; }
+                            }
+                            if (currentChapterH2) {
+                                const chapterIndex = parseInt(currentChapterH2.dataset.index);
+                                if (chapterIndex !== -1 && currentState.currentChapterIndex !== chapterIndex) {
+                                    currentState.currentChapterIndex = chapterIndex; updateActiveLink(chapterIndex); 
+                                }
+                            }
+                            if (supportsAdvancedCache && (scrollTop + clientHeight >= scrollHeight - 200)) loadNextChapterSeamlessly();
+                            currentState.isSeamlessScrolling = false;
+                        });
+                    }
+                });
+            });
+            DOMElements.sidebarToggle.onclick = () => DOMElements.sidebar.classList.toggle('visible');
+            DOMElements.prevBtn.onclick = (e) => { e.preventDefault(); if(!DOMElements.prevBtn.classList.contains('disabled')) loadChapter(currentState.currentChapterIndex - 1, 0, 'none'); };
+            DOMElements.nextBtn.onclick = (e) => { e.preventDefault(); if(!DOMElements.nextBtn.classList.contains('disabled')) loadChapter(currentState.currentChapterIndex + 1, 0, 'none'); };
+            DOMElements.clickZoneLeft.onclick = () => navigatePage('prev');
+            DOMElements.clickZoneRight.onclick = () => navigatePage('next');
+            document.addEventListener('keydown', (e) => {
+                const mode = currentState.settings.readMode;
+                if (mode === 'mode-slide' || mode === 'mode-sim') {
+                    if (e.key === 'ArrowLeft') navigatePage('prev');
+                    else if (e.key === 'ArrowRight') navigatePage('next');
+                }
+            });
+            DOMElements.mainContent.addEventListener('touchstart', (e) => {
+                const mode = currentState.settings.readMode;
+                if (mode !== 'mode-slide' && mode !== 'mode-sim') return;
+                if(e.target === DOMElements.clickZoneLeft || e.target === DOMElements.clickZoneRight) return;
+                currentState.touchState.startX = e.changedTouches[0].screenX;
+                currentState.touchState.startY = e.changedTouches[0].screenY;
+                currentState.touchState.isSwiping = false;
+            }, { passive: true });
+            DOMElements.mainContent.addEventListener('touchmove', (e) => {
+                if (currentState.touchState.startX === 0) return;
+                const mode = currentState.settings.readMode;
+                if (mode !== 'mode-slide' && mode !== 'mode-sim') return;
+                const deltaX = Math.abs(e.changedTouches[0].screenX - currentState.touchState.startX);
+                const deltaY = Math.abs(e.changedTouches[0].screenY - currentState.touchState.startY);
+                if (deltaX > 10 && deltaX > (deltaY * 1.5)) currentState.touchState.isSwiping = true;
+            }, { passive: true });
+            DOMElements.mainContent.addEventListener('touchend', (e) => {
+                const mode = currentState.settings.readMode;
+                if (mode !== 'mode-slide' && mode !== 'mode-sim') return;
+                if (!currentState.touchState.isSwiping) { currentState.touchState.startX = 0; return; }
+                const deltaX = e.changedTouches[0].screenX - currentState.touchState.startX;
+                if (Math.abs(deltaX) > 50) { 
+                    if (deltaX < 0) navigatePage('next'); else navigatePage('prev');
+                }
+                currentState.touchState.startX = 0;
+                currentState.touchState.isSwiping = false;
+            });
+            DOMElements.settingsBtn.onclick = () => {
+                DOMElements.modalBackdrop.classList.add('visible');
+                DOMElements.settingsModal.classList.add('visible');
+            };
+            DOMElements.modalBackdrop.onclick = () => {
+                DOMElements.modalBackdrop.classList.remove('visible');
+                DOMElements.settingsModal.classList.remove('visible');
+            };
+            DOMElements.themeLightBtn.onclick = () => applySettings({ theme: 'light' });
+            DOMElements.themeDarkBtn.onclick = () => applySettings({ theme: 'dark' });
+            DOMElements.readModeSelect.onchange = (e) => applySettings({ readMode: e.target.value });
+            DOMElements.fontFamilySelect.onchange = (e) => {
+                const value = e.target.value;
+                if (value === 'CustomFont') {
+                    if (!document.getElementById('custom-font-style') || !document.getElementById('custom-font-style').innerHTML) DOMElements.fontUploader.click();
+                    else applySettings({ fontFamily: 'CustomFont' });
+                } else applySettings({ fontFamily: value });
+            };
+            DOMElements.fontIncrease.onclick = () => applySettings({ fontSize: Math.min(currentState.settings.fontSize + 1, 32) });
+            DOMElements.fontDecrease.onclick = () => applySettings({ fontSize: Math.max(currentState.settings.fontSize - 1, 12) });
+            DOMElements.cacheAllBtn.onclick = cacheAllAssets;
+            DOMElements.clearCacheBtn.onclick = clearCache;
+            DOMElements.uploadFontBtn.onclick = () => DOMElements.fontUploader.click();
+            DOMElements.fontUploader.onchange = handleFontUpload;
+            DOMElements.clearFontBtn.onclick = clearCustomFont;
+        }
+        
+        function updateChapterList() { DOMElements.chapterList.innerHTML = chaptersData.map((c, i) => `<li><a href="?chapter=${i}" data-index="${i}">${c.title}</a></li>`).join(''); }
+
+        function loadSettings() {
+            const settings = JSON.parse(localStorage.getItem(`${config.novel_id}_settings`));
+            if (settings) {
+                if (settings.readMode === 'mode-slide' || settings.readMode === 'mode-sim') settings.readMode = 'mode-original-scroll';
+                applySettings(settings, false);
+            } else applySettings(currentState.settings, false); 
+        }
+        
+        function applySettings(newSettings, save = true) {
+            const oldSettings = { ...currentState.settings };
+            currentState.settings = { ...currentState.settings, ...newSettings };
+            
+            DOMElements.body.classList.toggle('dark', currentState.settings.theme === 'dark');
+            DOMElements.themeLightBtn.classList.toggle('active', currentState.settings.theme === 'light');
+            DOMElements.themeDarkBtn.classList.toggle('active', currentState.settings.theme === 'dark');
+            DOMElements.body.dataset.readMode = currentState.settings.readMode;
+            DOMElements.readModeSelect.value = currentState.settings.readMode;
+            
+            let finalFontFamily = currentState.settings.fontFamily;
+            if (finalFontFamily === 'CustomFont') {
+                if (document.getElementById('custom-font-style') && document.getElementById('custom-font-style').innerHTML) finalFontFamily = '"CustomFont", serif'; 
+                else finalFontFamily = '-apple-system, BlinkMacSystemFont, "Segoe UI", "Microsoft YaHei", sans-serif';
+            }
+            DOMElements.mainContent.style.fontFamily = finalFontFamily;
+            DOMElements.fontFamilySelect.value = currentState.settings.fontFamily;
+            DOMElements.body.style.setProperty('--font-size', `${currentState.settings.fontSize}px`);
+            DOMElements.fontSizeDisplay.textContent = `${currentState.settings.fontSize}px`;
+
+            if (save) localStorage.setItem(`${config.novel_id}_settings`, JSON.stringify(currentState.settings));
+
+            const layoutChanged = newSettings.readMode || newSettings.fontSize || newSettings.fontFamily;
+            if (layoutChanged && DOMElements.novelContent.innerHTML) {
+                let currentPosition = 0;
+                const oldIsPaging = oldSettings.readMode === 'mode-slide' || oldSettings.readMode === 'mode-sim';
+                if (oldIsPaging) {
+                    const { currentPage, totalPages } = currentState.pagination;
+                    currentPosition = (totalPages > 1) ? (currentPage / (totalPages - 1)) * 100 : 0;
+                } else { 
+                    const { scrollTop, scrollHeight, clientHeight } = DOMElements.mainContent;
+                    currentPosition = clientHeight >= scrollHeight ? 0 : (scrollTop / (scrollHeight - clientHeight)) * 100;
+                }
+                if (newSettings.readMode && newSettings.readMode !== oldSettings.readMode) loadChapter(currentState.currentChapterIndex, currentPosition, 'none');
+                else applyReadModeLayout(currentPosition, 'none');
+            }
+        }
+        
+        async function initialize() {
+            updateChapterList();
+            setupEventListeners();
+            loadSettings(); 
+            if (supportsAdvancedCache) {
+                try { await initDB(); await loadCustomFontFromDB(); } catch (e) { console.error("Failed to init DB or load custom font:", e); }
+                updateCacheStatus(); 
+            } else {
+                DOMElements.cacheStatus.textContent = '浏览器不支持高级离线功能';
+                DOMElements.chapterCacheGroup.style.display = 'none';
+                DOMElements.customFontGroup.style.display = 'none';
+            }
+            
+            // 移除了 initAuth() 调用，直接使用 sessionStorage 中的 Token
+            
+            const urlParams = new URLSearchParams(window.location.search);
+            const urlChapterIndex = urlParams.get('chapter');
+            if (urlChapterIndex !== null) { await loadChapter(parseInt(urlChapterIndex), 0, 'none'); return; }
+            if (currentState.apiToken) {
+                try {
+                    const progress = await apiRequest(`progress/${config.novel_id}`);
+                    if (progress && progress.chapter_id) {
+                        const targetIndex = chaptersData.findIndex(c => c.file === progress.chapter_id);
+                        if (targetIndex !== -1) { await loadChapter(targetIndex, progress.position, 'none'); return; }
+                    }
+                } catch (e) { console.warn("无法从服务器获取阅读进度，将从本地加载。", e); }
+            }
+            const lastChapterIndex = parseInt(localStorage.getItem(`${config.novel_id}_lastChapter`) || "0");
+            await loadChapter(lastChapterIndex, 0, 'none');
+        }
+
+        initialize();
+    </script>
+</body>
+</html>
