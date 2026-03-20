@@ -6,8 +6,8 @@
  * 3. 用户管理 (GET /users, DELETE /users/:id, PUT /users/:id/...)
  * 4. 管理员创建用户 (POST /users)
  * 5. 公告/私信 (POST /announcements)
- * 6. 移除了公开注册接口
- * 7. 进度管理: 获取用户近期所有阅读记录 (自动拼接 -pro, 放宽至 100 条)
+ * 6. 获取当前用户信息 (GET /users/me) 包含注册时间
+ * 7. 进度管理: 获取用户近期所有阅读记录 (自动拼接 -pro, 放宽至 1000 条)
  * ================================================================= */
 
 const ROOT_ADMIN_ID = 1;
@@ -83,6 +83,13 @@ async function handleApiRequest(context) {
         // [API] Users
         if (pathParts[0] === 'users') {
             if (request.method === 'GET') {
+                // 【新增】获取当前登录用户详情（包含注册时间 created_at）
+                if (pathParts[1] === 'me') {
+                    const userInfo = await env.DB.prepare("SELECT id, username, role, status, created_at FROM Users WHERE id = ?").bind(userId).first();
+                    return jsonResponse(userInfo, 200, request);
+                }
+                
+                // 管理员获取所有用户
                 if (user.role !== 'admin') return jsonResponse({ error: '无权操作' }, 403, request);
                 const { results } = await env.DB.prepare("SELECT id, username, role, status FROM Users").all();
                 return jsonResponse(results, 200, request);
@@ -167,7 +174,6 @@ async function handleApiRequest(context) {
                 await env.DB.prepare(stmt).bind(userId, novel_id, chapter_id, position).run();
                 return jsonResponse({ message: 'saved' }, 200, request);
             }
-            // 【修改】：放宽限制，拉取最多 1000 条历史记录供个人中心使用
             if (request.method === 'GET' && !pathParts[1]) {
                 const stmt = `
                     SELECT r.novel_id, r.chapter_id, r.position, r.updated_at, s.name, s.subdomain 
@@ -180,7 +186,6 @@ async function handleApiRequest(context) {
                 const { results } = await env.DB.prepare(stmt).bind(userId).all();
                 return jsonResponse(results || [], 200, request);
             }
-            // 获取具体某本书的进度
             if (request.method === 'GET' && pathParts[1]) {
                 const record = await env.DB.prepare("SELECT chapter_id, position FROM ReadingRecords WHERE user_id = ? AND novel_id = ?").bind(userId, pathParts[1]).first();
                 return jsonResponse(record || null, 200, request);
