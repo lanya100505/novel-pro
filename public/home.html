@@ -157,6 +157,7 @@
         }
         .history-item:hover { transform: translateX(4px); border-color: #a5b4fc; box-shadow: var(--shadow-md); }
         .hi-info { flex: 2; display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
+        /* 电脑端我们依然保留省略号，以保持长条对齐的美观 */
         .hi-info h4 { margin: 0; font-size: 1.1rem; color: var(--text-main); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .hi-info span { color: var(--text-secondary); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .hi-progress-wrap { flex: 1; min-width: 150px; display: flex; flex-direction: column; justify-content: center; }
@@ -210,7 +211,9 @@
 
         @keyframes fadeInContent { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* Mobile Adjustments */
+        /* =========================================
+           移动端适配 (核心修改区域) 
+           ========================================= */
         @media (max-width: 768px) {
             #app { padding: 0; }
             .navbar { position: static; margin: 0; border-radius: 0; border: none; border-bottom: 1px solid var(--border-color); flex-direction: column; align-items: stretch; gap: 0.5rem; padding: 1rem 1.5rem; }
@@ -226,10 +229,23 @@
             .profile-header > div:last-child { width: 100%; }
             .profile-header .btn { width: 100%; }
 
-            /* Mobile History List */
-            .history-item { flex-direction: column; align-items: flex-start; gap: 1rem; padding: 1.25rem; }
+            /* 移动端长条历史记录排版调整 */
+            .history-item { flex-direction: column; align-items: flex-start; gap: 0.8rem; padding: 1.25rem; }
             .hi-progress-wrap { width: 100%; }
             .hi-time { text-align: left; width: 100%; border-top: 1px dashed var(--border-color); padding-top: 0.8rem; }
+
+            /* 🔥 核心修复：强制移动端的书名和章节名换行，防止撑爆屏幕 */
+            .recent-card h4, 
+            .recent-card .chapter-name,
+            .hi-info h4, 
+            .hi-info span {
+                white-space: normal !important;        /* 覆盖掉电脑端的 nowrap */
+                word-wrap: break-word !important;      /* 允许在单词内换行 */
+                word-break: break-all !important;      /* 强制打断长字符串/拼音/数字 */
+                overflow: visible !important;          /* 防止被隐藏 */
+                text-overflow: clip !important;        /* 清除省略号 */
+                line-height: 1.5;                      /* 增加行高提升多行阅读体验 */
+            }
 
             table, thead, tbody, th, td, tr { display: block; }
             thead tr { display: none; }
@@ -303,7 +319,6 @@
         // UTC 时间转本地时间格式化工具
         const formatLocalTime = (utcStr) => {
             if (!utcStr) return '未知';
-            // 确保补充 Z 让浏览器知道这是 UTC 时间
             const d = new Date(utcStr.replace(' ', 'T') + 'Z');
             if (isNaN(d)) return utcStr;
             return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
@@ -337,7 +352,6 @@
         };
 
         // --- Render Reading Records ---
-        // 参数 layout 支持: 'grid' (卡片式) 或 'list' (长条式)
         const fetchAndRenderReadingRecords = async (containerId, layout = 'grid') => {
             try {
                 const records = await apiRequest('/progress');
@@ -356,7 +370,6 @@
                     const targetUrl = `https://${r.subdomain || r.novel_id}.${novelDomain}`;
                     
                     if (layout === 'grid') {
-                        // 主页：卡片样式
                         return `
                             <a href="${targetUrl}" class="recent-card" target="_blank">
                                 <h4>${r.name || '未知书籍'}</h4>
@@ -368,7 +381,6 @@
                             </a>
                         `;
                     } else {
-                        // 个人中心：长条样式
                         return `
                             <a href="${targetUrl}" class="history-item" target="_blank">
                                 <div class="hi-info">
@@ -433,17 +445,14 @@
             app.innerHTML = renderNavbar() + '<div style="text-align:center;padding:4rem;color:var(--text-secondary);">正在加载个人数据...</div>';
             
             try {
-                // 调用新 API 获取包含注册时间的完整用户信息
                 const userInfo = await apiRequest('/users/me');
                 
-                // 权限徽章智能识别
                 let roleName = '普通用户'; let roleColor = '#475569'; let roleBg = '#f1f5f9';
                 if (userInfo.role === 'admin') {
                     if (userInfo.id === 1) { roleName = '站长 (超级管理)'; roleColor = '#b91c1c'; roleBg = '#fee2e2'; } 
                     else { roleName = '管理员'; roleColor = '#1d4ed8'; roleBg = '#dbeafe'; }
                 }
 
-                // 时间计算：天数 & 格式化本地注册时间
                 const createdStr = userInfo.created_at || new Date().toISOString();
                 const joinDate = new Date(createdStr.replace(' ', 'T') + 'Z');
                 const daysUsed = Math.max(0, Math.floor((Date.now() - joinDate) / (1000 * 60 * 60 * 24)));
@@ -468,7 +477,6 @@
                             <button class="tab-btn" onclick="switchProfileTab('snippets')">📝 喜欢段落</button>
                         </div>
 
-                        <!-- 概览栏目 -->
                         <div id="tab-overview" class="tab-content active">
                             <div class="stat-card">
                                 <div class="stat-label">不知不觉，已经陪伴您的第</div>
@@ -477,14 +485,12 @@
                             </div>
                         </div>
 
-                        <!-- 阅读记录栏目 -->
                         <div id="tab-history" class="tab-content">
                             <div id="profile-history-list" class="history-list">
                                 <p style="color:#999; padding:1rem;">数据拉取中...</p>
                             </div>
                         </div>
 
-                        <!-- 喜欢段落栏目 (占位) -->
                         <div id="tab-snippets" class="tab-content">
                             <div class="empty-state">
                                 <span style="font-size: 2.5rem; display: block; margin-bottom: 1rem;">✒️</span>
@@ -493,7 +499,6 @@
                         </div>
                     </div>
                 `;
-                // 以 'list' 布局模式渲染完整的 1000 条记录
                 fetchAndRenderReadingRecords('profile-history-list', 'list');
             } catch (e) {
                 app.innerHTML = renderNavbar() + `<p style="color:red; text-align:center;">个人信息加载失败: ${e.message}</p>`;
