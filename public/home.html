@@ -68,41 +68,28 @@
             font-size: 0.95rem; letter-spacing: 0.01em;
         }
         .btn:active { transform: scale(0.96); }
-        .btn-primary { 
-            background: linear-gradient(135deg, var(--primary-color), var(--primary-hover)); 
-            color: white; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2);
-        }
+        .btn-primary { background: linear-gradient(135deg, var(--primary-color), var(--primary-hover)); color: white; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2); }
         .btn-primary:hover { box-shadow: 0 6px 10px -1px rgba(79, 70, 229, 0.3); transform: translateY(-1px); }
         .btn-danger { background-color: #fee2e2; color: var(--danger-color); border: 1px solid transparent; }
         .btn-danger:hover { background-color: #fecaca; border-color: #fca5a5; }
         .btn-outline { background: transparent; border: 1px solid var(--border-color); color: var(--text-main); }
         .btn-outline:hover { border-color: var(--text-secondary); background: #f8fafc; }
 
-        h2 {
-            margin-top: 0; font-size: 1.75rem; color: var(--text-main); margin-bottom: 1.5rem;
-            display: flex; align-items: center; gap: 0.75rem; font-weight: 800;
-        }
-        h2::before {
-            content: ''; display: block; width: 6px; height: 28px;
-            background: linear-gradient(to bottom, var(--primary-color), #a5b4fc);
-            border-radius: 3px;
-        }
+        h2 { margin-top: 0; font-size: 1.75rem; color: var(--text-main); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; font-weight: 800; }
+        h2::before { content: ''; display: block; width: 6px; height: 28px; background: linear-gradient(to bottom, var(--primary-color), #a5b4fc); border-radius: 3px; }
 
-        /* Sections */
         .content-section, .admin-section {
             background-color: var(--card-bg); padding: 2.5rem; border-radius: var(--radius);
             margin-bottom: 2.5rem; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color);
             transition: box-shadow 0.3s ease; width: 100%;
         }
-        .content-section:hover, .admin-section:hover { box-shadow: var(--shadow-md); }
 
         /* -------------------------------------
-           【阅读记录模块】 & 响应式截断逻辑 
+           【主页卡片形式记录】 
            ------------------------------------- */
         .recent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem; }
         .recent-card {
-            background: linear-gradient(135deg, #ffffff, #f8fafc);
-            border: 1px solid var(--border-color); border-radius: var(--radius);
+            background: linear-gradient(135deg, #ffffff, #f8fafc); border: 1px solid var(--border-color); border-radius: var(--radius);
             padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 0.5rem;
             transition: all 0.3s ease; text-decoration: none; position: relative;
         }
@@ -112,19 +99,15 @@
         .progress-bar-bg { width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 0.5rem;}
         .progress-bar-fill { height: 100%; background: var(--primary-color); transition: width 0.3s ease; }
         .progress-text { text-align: right; font-size: 0.8rem; color: var(--primary-color); font-weight: 600; margin-top: 0.2rem; }
-        
-        /* 核心科技：主页显示数量限制（电脑默认6个） */
         #recent-grid.home-limit .recent-card:nth-child(n+7) { display: none !important; }
 
         /* -------------------------------------
-           【个人中心页面特定样式】 
+           【个人中心页面】 Tab 选项卡及横向长条UI
            ------------------------------------- */
         .profile-header {
             display: flex; align-items: center; gap: 2rem; padding: 2.5rem;
-            background: linear-gradient(135deg, #ffffff, #f1f5f9);
-            border-radius: var(--radius); border: 1px solid var(--border-color);
-            margin-bottom: 2.5rem; box-shadow: var(--shadow-sm); position: relative;
-            overflow: hidden;
+            background: linear-gradient(135deg, #ffffff, #f1f5f9); border-radius: var(--radius); border: 1px solid var(--border-color);
+            margin-bottom: 2.5rem; box-shadow: var(--shadow-sm); position: relative; overflow: hidden;
         }
         .profile-header::after {
             content: ''; position: absolute; top: -50%; right: -10%; width: 300px; height: 300px;
@@ -133,45 +116,72 @@
         .profile-avatar {
             width: 90px; height: 90px; border-radius: 50%; background: #e0e7ff;
             display: flex; align-items: center; justify-content: center; font-size: 3rem;
-            box-shadow: 0 4px 10px rgba(79,70,229,0.15); border: 4px solid #fff; z-index: 1;
+            box-shadow: 0 4px 10px rgba(79,70,229,0.15); border: 4px solid #fff; z-index: 1; flex-shrink: 0;
         }
         .profile-info { flex: 1; z-index: 1; }
         .profile-info h3 { margin: 0 0 0.5rem 0; font-size: 1.8rem; color: var(--text-main); display: flex; align-items: center; gap: 0.75rem; }
         .role-badge { padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
-        .profile-section {
-            margin-bottom: 2.5rem; background: #fff; padding: 2rem;
-            border-radius: var(--radius); border: 1px solid var(--border-color);
-            box-shadow: var(--shadow-sm);
+
+        /* Tabs */
+        .profile-tabs { 
+            display: flex; gap: 1.5rem; border-bottom: 1px solid var(--border-color); margin-bottom: 2rem; 
+            overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; 
         }
+        .profile-tabs::-webkit-scrollbar { display: none; }
+        .tab-btn { 
+            background: none; border: none; border-bottom: 3px solid transparent; padding: 0.8rem 0.5rem; 
+            font-size: 1.05rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; 
+            transition: all 0.2s; white-space: nowrap; font-family: inherit; margin-bottom: -1px;
+        }
+        .tab-btn:hover { color: var(--primary-color); }
+        .tab-btn.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+        .tab-content { display: none; animation: fadeInContent 0.3s ease; }
+        .tab-content.active { display: block; }
+
+        /* Stats Card */
+        .stat-card { 
+            background: linear-gradient(135deg, #e0e7ff 0%, #ffffff 100%); border: 1px solid #c7d2fe; 
+            border-radius: var(--radius); padding: 3rem 2rem; text-align: center; box-shadow: var(--shadow-sm); 
+            max-width: 500px; margin: 0 auto;
+        }
+        .stat-card .stat-value { font-size: 4rem; font-weight: 800; color: var(--primary-color); margin: 0.5rem 0; line-height: 1; text-shadow: 0 2px 4px rgba(79,70,229,0.1); }
+        .stat-card .stat-label { font-size: 1.1rem; color: var(--text-secondary); font-weight: 600; }
+        .stat-desc { color: #64748b; font-size: 0.95rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed #a5b4fc; }
+
+        /* History List (Long Strip Format) */
+        .history-list { display: flex; flex-direction: column; gap: 1rem; }
+        .history-item { 
+            display: flex; align-items: center; background: #fff; border: 1px solid var(--border-color); 
+            border-radius: 12px; padding: 1.25rem 1.5rem; transition: all 0.2s; text-decoration: none; 
+            box-shadow: var(--shadow-sm); gap: 1.5rem;
+        }
+        .history-item:hover { transform: translateX(4px); border-color: #a5b4fc; box-shadow: var(--shadow-md); }
+        .hi-info { flex: 2; display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
+        .hi-info h4 { margin: 0; font-size: 1.1rem; color: var(--text-main); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .hi-info span { color: var(--text-secondary); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .hi-progress-wrap { flex: 1; min-width: 150px; display: flex; flex-direction: column; justify-content: center; }
+        .hi-time { flex: 1.2; text-align: right; color: #94a3b8; font-size: 0.85rem; font-family: monospace; }
+
         .empty-state {
             text-align: center; padding: 4rem 1rem; color: var(--text-secondary); font-weight: 500;
             background: #f8fafc; border-radius: 16px; border: 2px dashed #cbd5e1;
         }
 
-        /* Novel Cards */
+        /* Novel Cards (Main Library) */
         .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 2rem; }
         .novel-card {
             background: #ffffff; border: 1px solid var(--border-color); border-radius: var(--radius);
             padding: 1.75rem; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex; flex-direction: column; position: relative; overflow: hidden;
         }
-        .novel-card::before {
-            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px;
-            background: linear-gradient(90deg, var(--primary-color), #c7d2fe); opacity: 0; transition: opacity 0.3s ease;
-        }
+        .novel-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: linear-gradient(90deg, var(--primary-color), #c7d2fe); opacity: 0; transition: opacity 0.3s ease; }
         .novel-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-lg); border-color: #c7d2fe; }
         .novel-card:hover::before { opacity: 1; }
         .novel-card h3 { margin: 0 0 1.25rem 0; font-size: 1.35rem; color: var(--text-main); font-weight: 700; line-height: 1.3; }
         
-        .novel-card details {
-            margin-bottom: 1rem; border-radius: 10px; background-color: #f8fafc;
-            border: 1px solid transparent; transition: all 0.3s ease; overflow: hidden;
-        }
+        .novel-card details { margin-bottom: 1rem; border-radius: 10px; background-color: #f8fafc; border: 1px solid transparent; transition: all 0.3s ease; overflow: hidden; }
         .novel-card details[open] { border-color: #e2e8f0; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.03); }
-        .novel-card summary {
-            padding: 0.75rem 1rem; cursor: pointer; font-weight: 600; color: var(--text-secondary);
-            font-size: 0.9rem; list-style: none; display: flex; justify-content: space-between; align-items: center; outline: none;
-        }
+        .novel-card summary { padding: 0.75rem 1rem; cursor: pointer; font-weight: 600; color: var(--text-secondary); font-size: 0.9rem; list-style: none; display: flex; justify-content: space-between; align-items: center; outline: none; }
         .novel-card summary:hover { color: var(--primary-color); }
         .novel-card summary::-webkit-details-marker { display: none; }
         .novel-card summary::after { content: '›'; font-size: 1.4em; color: #94a3b8; transition: transform 0.3s; }
@@ -187,51 +197,39 @@
         tr:hover td { background-color: #f8fafc; }
         .form-group { margin-bottom: 1.75rem; }
         label { display: block; margin-bottom: 0.6rem; font-weight: 600; font-size: 0.9rem; }
-        input, select, textarea {
-            width: 100%; padding: 0.9rem 1.1rem; border: 2px solid var(--border-color); border-radius: 12px;
-            font-size: 1rem; box-sizing: border-box; outline: none; background: #f8fafc;
-        }
+        input, select, textarea { width: 100%; padding: 0.9rem 1.1rem; border: 2px solid var(--border-color); border-radius: 12px; font-size: 1rem; box-sizing: border-box; outline: none; background: #f8fafc; }
         input:focus, select:focus, textarea:focus { border-color: var(--primary-color); background: #fff; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
 
         /* Modals */
-        .modal-backdrop {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(15, 23, 42, 0.5);
-            backdrop-filter: blur(8px); z-index: 1040; display: flex; align-items: center; justify-content: center;
-        }
-        .modal {
-            background: var(--card-bg); padding: 2.5rem; border-radius: 24px; width: 90%; max-width: 520px;
-            box-shadow: var(--shadow-lg); max-height: 90vh; overflow-y: auto; 
-        }
+        .modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(15, 23, 42, 0.5); backdrop-filter: blur(8px); z-index: 1040; display: flex; align-items: center; justify-content: center; }
+        .modal { background: var(--card-bg); padding: 2.5rem; border-radius: 24px; width: 90%; max-width: 520px; box-shadow: var(--shadow-lg); max-height: 90vh; overflow-y: auto; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
         .modal-header h3 { margin: 0; font-size: 1.5rem; font-weight: 800; }
         .modal-footer { margin-top: 2.5rem; text-align: right; display: flex; justify-content: flex-end; gap: 1rem; }
         .hidden { display: none !important; }
 
+        @keyframes fadeInContent { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
         /* Mobile Adjustments */
         @media (max-width: 768px) {
             #app { padding: 0; }
-            .navbar { 
-                position: static; margin: 0; border-radius: 0; border: none; border-bottom: 1px solid var(--border-color);
-                flex-direction: column; align-items: stretch; gap: 0.5rem; padding: 1rem 1.5rem; 
-            }
-            .navbar .nav-links { 
-                justify-content: space-between; width: 100%; gap: 0.5rem; flex-wrap: nowrap;
-                overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; 
-            }
+            .navbar { position: static; margin: 0; border-radius: 0; border: none; border-bottom: 1px solid var(--border-color); flex-direction: column; align-items: stretch; gap: 0.5rem; padding: 1rem 1.5rem; }
+            .navbar .nav-links { justify-content: space-between; width: 100%; gap: 0.5rem; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
             .navbar .nav-links::-webkit-scrollbar { display: none; }
-            .navbar .nav-links a, .navbar .nav-links button.nav-btn { 
-                padding: 0.7rem 1.2rem; background: #f1f5f9; border-radius: 12px; font-size: 0.95rem; 
-                white-space: nowrap; flex-shrink: 0; flex-grow: 1; text-align: center;
-            }
-            .content-section, .admin-section, .profile-section { margin: 1rem; padding: 1.5rem; width: auto; border-radius: 16px; }
+            .navbar .nav-links a, .navbar .nav-links button.nav-btn { padding: 0.7rem 1.2rem; background: #f1f5f9; border-radius: 12px; font-size: 0.95rem; white-space: nowrap; flex-shrink: 0; flex-grow: 1; text-align: center; }
+            .content-section, .admin-section { margin: 1rem; padding: 1.5rem; width: auto; border-radius: 16px; }
             
-            /* 手机端只显示 3 个记录 */
             #recent-grid.home-limit .recent-card:nth-child(n+4) { display: none !important; }
             
             .profile-header { flex-direction: column; text-align: center; gap: 1.5rem; margin: 1rem; border-radius: 16px; padding: 2rem 1.5rem; }
             .profile-info h3 { justify-content: center; flex-wrap: wrap; }
             .profile-header > div:last-child { width: 100%; }
             .profile-header .btn { width: 100%; }
+
+            /* Mobile History List */
+            .history-item { flex-direction: column; align-items: flex-start; gap: 1rem; padding: 1.25rem; }
+            .hi-progress-wrap { width: 100%; }
+            .hi-time { text-align: left; width: 100%; border-top: 1px dashed var(--border-color); padding-top: 0.8rem; }
 
             table, thead, tbody, th, td, tr { display: block; }
             thead tr { display: none; }
@@ -302,6 +300,23 @@
              return '20100505.xyz';
         };
 
+        // UTC 时间转本地时间格式化工具
+        const formatLocalTime = (utcStr) => {
+            if (!utcStr) return '未知';
+            // 确保补充 Z 让浏览器知道这是 UTC 时间
+            const d = new Date(utcStr.replace(' ', 'T') + 'Z');
+            if (isNaN(d)) return utcStr;
+            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+        };
+
+        // Tab 切换逻辑
+        window.switchProfileTab = (tabId) => {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelector(`[onclick="switchProfileTab('${tabId}')"]`).classList.add('active');
+            document.getElementById(`tab-${tabId}`).classList.add('active');
+        };
+
         // --- Nav ---
         const renderNavbar = () => { 
             const { user } = auth.get(); 
@@ -322,32 +337,56 @@
         };
 
         // --- Render Reading Records ---
-        const fetchAndRenderReadingRecords = async (containerId) => {
+        // 参数 layout 支持: 'grid' (卡片式) 或 'list' (长条式)
+        const fetchAndRenderReadingRecords = async (containerId, layout = 'grid') => {
             try {
                 const records = await apiRequest('/progress');
-                const grid = document.getElementById(containerId);
-                const section = document.getElementById(containerId + '-section'); // 用于主页隐藏外层区块
+                const container = document.getElementById(containerId);
+                const section = document.getElementById(containerId + '-section');
                 
                 if (!records || records.length === 0) {
-                    if (section) section.style.display = 'none'; // 主页：没数据直接隐藏
-                    else grid.innerHTML = '<div style="grid-column: 1/-1;" class="empty-state">暂无阅读记录</div>'; // 个人中心：显示空状态
+                    if (section) section.style.display = 'none';
+                    else container.innerHTML = '<div style="grid-column: 1/-1;" class="empty-state">暂无阅读记录</div>';
                     return;
                 }
                 
                 const novelDomain = getNovelDomain();
-                grid.innerHTML = records.map(r => {
+                container.innerHTML = records.map(r => {
                     const cleanChapterName = r.chapter_id ? r.chapter_id.replace('.txt', '').replace(/^\d+_/, '') : '未知章节';
                     const targetUrl = `https://${r.subdomain || r.novel_id}.${novelDomain}`;
-                    return `
-                        <a href="${targetUrl}" class="recent-card" target="_blank">
-                            <h4>${r.name || '未知书籍'}</h4>
-                            <p class="chapter-name">阅读至：${cleanChapterName}</p>
-                            <div class="progress-bar-bg">
-                                <div class="progress-bar-fill" style="width: ${r.position}%"></div>
-                            </div>
-                            <div class="progress-text">${r.position}%</div>
-                        </a>
-                    `;
+                    
+                    if (layout === 'grid') {
+                        // 主页：卡片样式
+                        return `
+                            <a href="${targetUrl}" class="recent-card" target="_blank">
+                                <h4>${r.name || '未知书籍'}</h4>
+                                <p class="chapter-name">阅读至：${cleanChapterName}</p>
+                                <div class="progress-bar-bg">
+                                    <div class="progress-bar-fill" style="width: ${r.position}%"></div>
+                                </div>
+                                <div class="progress-text">${r.position}%</div>
+                            </a>
+                        `;
+                    } else {
+                        // 个人中心：长条样式
+                        return `
+                            <a href="${targetUrl}" class="history-item" target="_blank">
+                                <div class="hi-info">
+                                    <h4>${r.name || '未知书籍'}</h4>
+                                    <span>阅读至：${cleanChapterName}</span>
+                                </div>
+                                <div class="hi-progress-wrap">
+                                    <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:0.4rem; color:var(--text-secondary); font-weight:600;">
+                                        <span>阅读进度</span><span>${r.position}%</span>
+                                    </div>
+                                    <div class="progress-bar-bg" style="margin:0;"><div class="progress-bar-fill" style="width: ${r.position}%"></div></div>
+                                </div>
+                                <div class="hi-time">
+                                    最后阅读：<br/>${formatLocalTime(r.updated_at)}
+                                </div>
+                            </a>
+                        `;
+                    }
                 }).join('');
                 
                 if (section) section.style.display = 'block';
@@ -359,11 +398,10 @@
             app.innerHTML = renderNavbar() + `
                 <div id="announcement-bar"></div>
                 
-                <!-- 最近阅读区块 (带有 home-limit 类来控制截断) -->
                 <div id="recent-grid-section" class="content-section" style="display: none;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                         <h2 style="margin-bottom: 0;">⏱️ 继续阅读</h2>
-                        <a href="#/profile" class="btn btn-outline" style="padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.85rem;">全部记录 ➔</a>
+                        <a href="#/profile" class="btn btn-outline" style="padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.85rem;" onclick="setTimeout(()=>switchProfileTab('history'), 100)">全部记录 ➔</a>
                     </div>
                     <div id="recent-grid" class="recent-grid home-limit"></div>
                 </div>
@@ -374,7 +412,7 @@
                 </div>`; 
             
             fetchAndRenderAnnouncements(); 
-            fetchAndRenderReadingRecords('recent-grid');
+            fetchAndRenderReadingRecords('recent-grid', 'grid');
             
             try { 
                 const novels = await apiRequest('/sites?type=novel'); 
@@ -392,52 +430,74 @@
         };
 
         const renderProfilePage = async () => {
-            const { user } = auth.get();
+            app.innerHTML = renderNavbar() + '<div style="text-align:center;padding:4rem;color:var(--text-secondary);">正在加载个人数据...</div>';
             
-            // 权限徽章智能识别
-            let roleName = '普通用户'; let roleColor = '#475569'; let roleBg = '#f1f5f9';
-            if (user.role === 'admin') {
-                if (user.id === 1) { roleName = '站长 (超级管理)'; roleColor = '#b91c1c'; roleBg = '#fee2e2'; } 
-                else { roleName = '管理员'; roleColor = '#1d4ed8'; roleBg = '#dbeafe'; }
+            try {
+                // 调用新 API 获取包含注册时间的完整用户信息
+                const userInfo = await apiRequest('/users/me');
+                
+                // 权限徽章智能识别
+                let roleName = '普通用户'; let roleColor = '#475569'; let roleBg = '#f1f5f9';
+                if (userInfo.role === 'admin') {
+                    if (userInfo.id === 1) { roleName = '站长 (超级管理)'; roleColor = '#b91c1c'; roleBg = '#fee2e2'; } 
+                    else { roleName = '管理员'; roleColor = '#1d4ed8'; roleBg = '#dbeafe'; }
+                }
+
+                // 时间计算：天数 & 格式化本地注册时间
+                const createdStr = userInfo.created_at || new Date().toISOString();
+                const joinDate = new Date(createdStr.replace(' ', 'T') + 'Z');
+                const daysUsed = Math.max(0, Math.floor((Date.now() - joinDate) / (1000 * 60 * 60 * 24)));
+                const joinDateFormatted = formatLocalTime(createdStr);
+
+                app.innerHTML = renderNavbar() + `
+                    <div class="profile-header">
+                        <div class="profile-avatar">👤</div>
+                        <div class="profile-info">
+                            <h3>${userInfo.username} <span class="role-badge" style="color:${roleColor}; background:${roleBg};">${roleName}</span></h3>
+                            <p style="color: var(--text-secondary); margin: 0; font-size: 0.95rem;">欢迎来到你的个人中心，在这里管理你的阅读足迹和个性化设置。</p>
+                        </div>
+                        <div>
+                            <button class="btn btn-outline" style="background:#fff; z-index: 2; position:relative;" onclick="showUserPasswordModal(${userInfo.id})">🔒 修改密码</button>
+                        </div>
+                    </div>
+
+                    <div class="content-section" style="padding: 1.5rem 2.5rem;">
+                        <div class="profile-tabs">
+                            <button class="tab-btn active" onclick="switchProfileTab('overview')">📊 数据概览</button>
+                            <button class="tab-btn" onclick="switchProfileTab('history')">⏱️ 阅读记录</button>
+                            <button class="tab-btn" onclick="switchProfileTab('snippets')">📝 喜欢段落</button>
+                        </div>
+
+                        <!-- 概览栏目 -->
+                        <div id="tab-overview" class="tab-content active">
+                            <div class="stat-card">
+                                <div class="stat-label">不知不觉，已经陪伴您的第</div>
+                                <div class="stat-value">${daysUsed} <span style="font-size: 1.5rem;">天</span></div>
+                                <div class="stat-desc">账户注册于：${joinDateFormatted}</div>
+                            </div>
+                        </div>
+
+                        <!-- 阅读记录栏目 -->
+                        <div id="tab-history" class="tab-content">
+                            <div id="profile-history-list" class="history-list">
+                                <p style="color:#999; padding:1rem;">数据拉取中...</p>
+                            </div>
+                        </div>
+
+                        <!-- 喜欢段落栏目 (占位) -->
+                        <div id="tab-snippets" class="tab-content">
+                            <div class="empty-state">
+                                <span style="font-size: 2.5rem; display: block; margin-bottom: 1rem;">✒️</span>
+                                暂无喜欢的段落，摘录功能正在火热开发中敬请期待...
+                            </div>
+                        </div>
+                    </div>
+                `;
+                // 以 'list' 布局模式渲染完整的 1000 条记录
+                fetchAndRenderReadingRecords('profile-history-list', 'list');
+            } catch (e) {
+                app.innerHTML = renderNavbar() + `<p style="color:red; text-align:center;">个人信息加载失败: ${e.message}</p>`;
             }
-
-            app.innerHTML = renderNavbar() + `
-                <div class="profile-header">
-                    <div class="profile-avatar">👤</div>
-                    <div class="profile-info">
-                        <h3>${user.username} <span class="role-badge" style="color:${roleColor}; background:${roleBg};">${roleName}</span></h3>
-                        <p style="color: var(--text-secondary); margin: 0; font-size: 0.95rem;">欢迎来到你的个人中心，在这里管理你的阅读足迹和个性化设置。</p>
-                    </div>
-                    <div>
-                        <button class="btn btn-outline" style="background:#fff; z-index: 2; position:relative;" onclick="showUserPasswordModal(${user.id})">🔒 修改密码</button>
-                    </div>
-                </div>
-
-                <div class="profile-section">
-                    <h2>⏱️ 完整阅读记录</h2>
-                    <div id="profile-recent-grid" class="recent-grid">
-                        <p style="color:#999; padding:1rem;">加载中...</p>
-                    </div>
-                </div>
-
-                <div class="profile-section">
-                    <h2>🌟 收藏的章节</h2>
-                    <div class="empty-state">
-                        <span style="font-size: 2.5rem; display: block; margin-bottom: 1rem;">🔖</span>
-                        暂无收藏，此功能正在开发中敬请期待...
-                    </div>
-                </div>
-
-                <div class="profile-section">
-                    <h2>📝 我的摘录段落</h2>
-                    <div class="empty-state">
-                        <span style="font-size: 2.5rem; display: block; margin-bottom: 1rem;">✒️</span>
-                        暂无摘录，此功能正在开发中敬请期待...
-                    </div>
-                </div>
-            `;
-            // 在个人中心渲染记录，不用 home-limit 截断类，所以会全部展示
-            fetchAndRenderReadingRecords('profile-recent-grid');
         };
 
         const renderAdminPage = async () => { 
@@ -530,14 +590,14 @@
         const router = { 
             routes: { 
                 '/': renderHomePage, 
-                '/profile': renderProfilePage, // 新增个人中心路由
+                '/profile': renderProfilePage, 
                 '/admin': renderAdminPage 
             }, 
             navigate(path) { window.location.hash = path; }, 
             handler() { 
                 const path = (window.location.hash.replace('#', '') || '/').split('?')[0]; 
                 (this.routes[path] || this.routes['/'])(); 
-                window.scrollTo(0, 0); // 切换页面后回到顶部
+                window.scrollTo(0, 0);
             } 
         };
 
