@@ -1,617 +1,224 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>我的私人导航站</title>
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
-    <style>
-        :root {
-            --primary-color: #4f46e5;
-            --primary-hover: #4338ca;
-            --bg-color: #f8fafc;
-            --card-bg: #ffffff;
-            --text-main: #1e293b;
-            --text-secondary: #64748b;
-            --border-color: #e2e8f0;
-            --danger-color: #ef4444;
-            --success-color: #10b981;
-            --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
-            --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-            --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
-            --radius: 16px;
-        }
+/* =================================================================
+ * Cloudflare Worker Backend (v18.0.0 - Full Feature Set)
+ * 支持:
+ * 1. 登录 (POST /login)
+ * 2. 站点管理 (CRUD /sites)
+ * 3. 用户管理 (GET /users, DELETE /users/:id, PUT /users/:id/...)
+ * 4. 管理员创建用户 (POST /users)
+ * 5. 公告/私信 (POST /announcements)
+ * 6. 获取当前用户信息 (GET /users/me) 包含注册时间
+ * 7. 进度管理: 获取用户近期所有阅读记录 (自动拼接 -pro, 放宽至 1000 条)
+ * ================================================================= */
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+const ROOT_ADMIN_ID = 1;
 
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            margin: 0; background-color: var(--bg-color); color: var(--text-main);
-            line-height: 1.6; -webkit-font-smoothing: antialiased; overflow-x: hidden;
-        }
+const handleOptions = (request) => { 
+    const origin = request.headers.get("Origin") || "*"; 
+    const headers = { 
+        "Access-Control-Allow-Origin": origin, 
+        "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS", 
+        "Access-Control-Allow-Headers": "Content-Type, Authorization", 
+        "Access-Control-Max-Age": "86400" 
+    }; 
+    return new Response(null, { headers }); 
+};
 
-        #app { max-width: 1200px; margin: 0 auto; padding: 24px; min-height: 100vh; }
+const jsonResponse = (data, status = 200, request) => { 
+    const origin = request.headers.get("Origin") || "*"; 
+    const headers = { 
+        "Content-Type": "application/json;charset=UTF-8", 
+        "Access-Control-Allow-Origin": origin 
+    }; 
+    if (status === 204) return new Response(null, { status, headers });
+    return new Response(JSON.stringify(data, null, 2), { status, headers }); 
+};
 
-        /* Navbar */
-        .navbar {
-            display: flex; justify-content: space-between; align-items: center;
-            background-color: rgba(255, 255, 255, 0.7); backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px); padding: 1rem 2rem;
-            border-radius: var(--radius); box-shadow: var(--shadow-sm);
-            margin-bottom: 2.5rem; position: sticky; top: 20px; z-index: 100;
-            border: 1px solid rgba(255,255,255,0.6); transition: box-shadow 0.3s ease;
-        }
-        .navbar:hover { box-shadow: var(--shadow-md); }
-        .navbar .logo {
-            font-size: 2rem; font-weight: 800; text-decoration: none;
-            background: linear-gradient(135deg, var(--primary-color), #818cf8);
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-            letter-spacing: -0.5px;
-        }
-        .navbar .nav-links { display: flex; gap: 1.5rem; align-items: center; }
-        .navbar .nav-links a, .navbar .nav-links button.nav-btn {
-            text-decoration: none; color: var(--text-secondary); font-weight: 600;
-            font-size: 0.95rem; padding: 0.5rem 1rem; border-radius: 10px;
-            transition: all 0.2s ease; background: transparent; border: none; cursor: pointer;
-            font-family: inherit;
-        }
-        .navbar .nav-links a:hover, .navbar .nav-links button.nav-btn:hover {
-            color: var(--primary-color); background-color: #e0e7ff;
-        }
-        .navbar .nav-links a.active { color: var(--primary-color); background-color: #eef2ff; }
+async function hashPassword(password) { 
+    const utf8 = new TextEncoder().encode(password); 
+    const hashBuffer = await crypto.subtle.digest('SHA-256', utf8); 
+    const hashArray = Array.from(new Uint8Array(hashBuffer)); 
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join(''); 
+}
 
-        /* Buttons */
-        .btn {
-            padding: 0.7rem 1.4rem; border-radius: 10px; border: none; cursor: pointer;
-            font-weight: 600; text-decoration: none; display: inline-flex; align-items: center;
-            justify-content: center; transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            font-size: 0.95rem; letter-spacing: 0.01em;
-        }
-        .btn:active { transform: scale(0.96); }
-        .btn-primary { background: linear-gradient(135deg, var(--primary-color), var(--primary-hover)); color: white; box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.2); }
-        .btn-primary:hover { box-shadow: 0 6px 10px -1px rgba(79, 70, 229, 0.3); transform: translateY(-1px); }
-        .btn-danger { background-color: #fee2e2; color: var(--danger-color); border: 1px solid transparent; }
-        .btn-danger:hover { background-color: #fecaca; border-color: #fca5a5; }
-        .btn-outline { background: transparent; border: 1px solid var(--border-color); color: var(--text-main); }
-        .btn-outline:hover { border-color: var(--text-secondary); background: #f8fafc; }
+function getUserFromToken(request) { 
+    const authHeader = request.headers.get('Authorization'); 
+    if (!authHeader || !authHeader.startsWith('Bearer ')) return null; 
+    try { 
+        const token = authHeader.split(' ')[1]; 
+        return JSON.parse(atob(token)); 
+    } catch (e) { return null; } 
+}
 
-        h2 { margin-top: 0; font-size: 1.75rem; color: var(--text-main); margin-bottom: 1.5rem; display: flex; align-items: center; gap: 0.75rem; font-weight: 800; }
-        h2::before { content: ''; display: block; width: 6px; height: 28px; background: linear-gradient(to bottom, var(--primary-color), #a5b4fc); border-radius: 3px; }
+export async function onRequest(context) { 
+    if (context.request.method === 'OPTIONS') return handleOptions(context.request); 
+    return handleApiRequest(context); 
+}
 
-        .content-section, .admin-section {
-            background-color: var(--card-bg); padding: 2.5rem; border-radius: var(--radius);
-            margin-bottom: 2.5rem; box-shadow: var(--shadow-sm); border: 1px solid var(--border-color);
-            transition: box-shadow 0.3s ease; width: 100%;
-        }
+async function handleApiRequest(context) {
+    const { request, env, params } = context;
+    const url = new URL(request.url);
+    const pathParts = params.path || [];
 
-        /* -------------------------------------
-           【主页卡片形式记录】 
-           ------------------------------------- */
-        .recent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem; }
-        .recent-card {
-            background: linear-gradient(135deg, #ffffff, #f8fafc); border: 1px solid var(--border-color); border-radius: var(--radius);
-            padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 0.5rem;
-            transition: all 0.3s ease; text-decoration: none; position: relative;
-        }
-        .recent-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-md); border-color: #a5b4fc; }
-        .recent-card h4 { margin: 0; font-size: 1.15rem; color: var(--text-main); font-weight: 700; }
-        .recent-card .chapter-name { margin: 0; color: var(--text-secondary); font-size: 0.85rem; }
-        .progress-bar-bg { width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 0.5rem;}
-        .progress-bar-fill { height: 100%; background: var(--primary-color); transition: width 0.3s ease; }
-        .progress-text { text-align: right; font-size: 0.8rem; color: var(--primary-color); font-weight: 600; margin-top: 0.2rem; }
-        #recent-grid.home-limit .recent-card:nth-child(n+7) { display: none !important; }
+    try {
+        // [Public] Login
+        if (pathParts[0] === 'login') {
+            const { username, password } = await request.json();
+            if (!username || !password) return jsonResponse({ error: '请输入用户名和密码' }, 400, request);
 
-        /* -------------------------------------
-           【个人中心页面】 Tab 选项卡及横向长条UI
-           ------------------------------------- */
-        .profile-header {
-            display: flex; align-items: center; gap: 2rem; padding: 2.5rem;
-            background: linear-gradient(135deg, #ffffff, #f1f5f9); border-radius: var(--radius); border: 1px solid var(--border-color);
-            margin-bottom: 2.5rem; box-shadow: var(--shadow-sm); position: relative; overflow: hidden;
-        }
-        .profile-header::after {
-            content: ''; position: absolute; top: -50%; right: -10%; width: 300px; height: 300px;
-            background: radial-gradient(circle, rgba(79,70,229,0.05) 0%, transparent 70%); border-radius: 50%;
-        }
-        .profile-avatar {
-            width: 90px; height: 90px; border-radius: 50%; background: #e0e7ff;
-            display: flex; align-items: center; justify-content: center; font-size: 3rem;
-            box-shadow: 0 4px 10px rgba(79,70,229,0.15); border: 4px solid #fff; z-index: 1; flex-shrink: 0;
-        }
-        .profile-info { flex: 1; z-index: 1; }
-        .profile-info h3 { margin: 0 0 0.5rem 0; font-size: 1.8rem; color: var(--text-main); display: flex; align-items: center; gap: 0.75rem; }
-        .role-badge { padding: 4px 12px; border-radius: 20px; font-size: 0.85rem; font-weight: 600; }
-
-        /* Tabs */
-        .profile-tabs { 
-            display: flex; gap: 1.5rem; border-bottom: 1px solid var(--border-color); margin-bottom: 2rem; 
-            overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; 
-        }
-        .profile-tabs::-webkit-scrollbar { display: none; }
-        .tab-btn { 
-            background: none; border: none; border-bottom: 3px solid transparent; padding: 0.8rem 0.5rem; 
-            font-size: 1.05rem; font-weight: 600; color: var(--text-secondary); cursor: pointer; 
-            transition: all 0.2s; white-space: nowrap; font-family: inherit; margin-bottom: -1px;
-        }
-        .tab-btn:hover { color: var(--primary-color); }
-        .tab-btn.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
-        .tab-content { display: none; animation: fadeInContent 0.3s ease; }
-        .tab-content.active { display: block; }
-
-        /* Stats Card */
-        .stat-card { 
-            background: linear-gradient(135deg, #e0e7ff 0%, #ffffff 100%); border: 1px solid #c7d2fe; 
-            border-radius: var(--radius); padding: 3rem 2rem; text-align: center; box-shadow: var(--shadow-sm); 
-            max-width: 500px; margin: 0 auto;
-        }
-        .stat-card .stat-value { font-size: 4rem; font-weight: 800; color: var(--primary-color); margin: 0.5rem 0; line-height: 1; text-shadow: 0 2px 4px rgba(79,70,229,0.1); }
-        .stat-card .stat-label { font-size: 1.1rem; color: var(--text-secondary); font-weight: 600; }
-        .stat-desc { color: #64748b; font-size: 0.95rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed #a5b4fc; }
-
-        /* History List (Long Strip Format) */
-        .history-list { display: flex; flex-direction: column; gap: 1rem; }
-        .history-item { 
-            display: flex; align-items: center; background: #fff; border: 1px solid var(--border-color); 
-            border-radius: 12px; padding: 1.25rem 1.5rem; transition: all 0.2s; text-decoration: none; 
-            box-shadow: var(--shadow-sm); gap: 1.5rem;
-        }
-        .history-item:hover { transform: translateX(4px); border-color: #a5b4fc; box-shadow: var(--shadow-md); }
-        .hi-info { flex: 2; display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
-        /* 电脑端我们依然保留省略号，以保持长条对齐的美观 */
-        .hi-info h4 { margin: 0; font-size: 1.1rem; color: var(--text-main); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .hi-info span { color: var(--text-secondary); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .hi-progress-wrap { flex: 1; min-width: 150px; display: flex; flex-direction: column; justify-content: center; }
-        .hi-time { flex: 1.2; text-align: right; color: #94a3b8; font-size: 0.85rem; font-family: monospace; }
-
-        .empty-state {
-            text-align: center; padding: 4rem 1rem; color: var(--text-secondary); font-weight: 500;
-            background: #f8fafc; border-radius: 16px; border: 2px dashed #cbd5e1;
-        }
-
-        /* Novel Cards (Main Library) */
-        .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 2rem; }
-        .novel-card {
-            background: #ffffff; border: 1px solid var(--border-color); border-radius: var(--radius);
-            padding: 1.75rem; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            display: flex; flex-direction: column; position: relative; overflow: hidden;
-        }
-        .novel-card::before { content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 4px; background: linear-gradient(90deg, var(--primary-color), #c7d2fe); opacity: 0; transition: opacity 0.3s ease; }
-        .novel-card:hover { transform: translateY(-6px); box-shadow: var(--shadow-lg); border-color: #c7d2fe; }
-        .novel-card:hover::before { opacity: 1; }
-        .novel-card h3 { margin: 0 0 1.25rem 0; font-size: 1.35rem; color: var(--text-main); font-weight: 700; line-height: 1.3; }
-        
-        .novel-card details { margin-bottom: 1rem; border-radius: 10px; background-color: #f8fafc; border: 1px solid transparent; transition: all 0.3s ease; overflow: hidden; }
-        .novel-card details[open] { border-color: #e2e8f0; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.03); }
-        .novel-card summary { padding: 0.75rem 1rem; cursor: pointer; font-weight: 600; color: var(--text-secondary); font-size: 0.9rem; list-style: none; display: flex; justify-content: space-between; align-items: center; outline: none; }
-        .novel-card summary:hover { color: var(--primary-color); }
-        .novel-card summary::-webkit-details-marker { display: none; }
-        .novel-card summary::after { content: '›'; font-size: 1.4em; color: #94a3b8; transition: transform 0.3s; }
-        .novel-card details[open] summary::after { transform: rotate(90deg); color: var(--primary-color); }
-        .novel-card .details-content { padding: 0 1rem 1rem 1rem; font-size: 0.95rem; line-height: 1.7; }
-        .novel-card .btn { margin-top: auto; width: 100%; }
-
-        /* Tables & Forms (Admin) */
-        .table-wrapper { overflow-x: auto; border-radius: 12px; border: 1px solid var(--border-color); width: 100%; }
-        table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
-        th { background-color: #f1f5f9; font-weight: 700; color: var(--text-secondary); font-size: 0.75rem; padding: 1.2rem; text-align: left; }
-        td { padding: 1.2rem; border-top: 1px solid var(--border-color); background: #fff; }
-        tr:hover td { background-color: #f8fafc; }
-        .form-group { margin-bottom: 1.75rem; }
-        label { display: block; margin-bottom: 0.6rem; font-weight: 600; font-size: 0.9rem; }
-        input, select, textarea { width: 100%; padding: 0.9rem 1.1rem; border: 2px solid var(--border-color); border-radius: 12px; font-size: 1rem; box-sizing: border-box; outline: none; background: #f8fafc; }
-        input:focus, select:focus, textarea:focus { border-color: var(--primary-color); background: #fff; box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1); }
-
-        /* Modals */
-        .modal-backdrop { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(15, 23, 42, 0.5); backdrop-filter: blur(8px); z-index: 1040; display: flex; align-items: center; justify-content: center; }
-        .modal { background: var(--card-bg); padding: 2.5rem; border-radius: 24px; width: 90%; max-width: 520px; box-shadow: var(--shadow-lg); max-height: 90vh; overflow-y: auto; }
-        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; }
-        .modal-header h3 { margin: 0; font-size: 1.5rem; font-weight: 800; }
-        .modal-footer { margin-top: 2.5rem; text-align: right; display: flex; justify-content: flex-end; gap: 1rem; }
-        .hidden { display: none !important; }
-
-        @keyframes fadeInContent { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* =========================================
-           移动端适配 (核心修改区域) 
-           ========================================= */
-        @media (max-width: 768px) {
-            #app { padding: 0; }
-            .navbar { position: static; margin: 0; border-radius: 0; border: none; border-bottom: 1px solid var(--border-color); flex-direction: column; align-items: stretch; gap: 0.5rem; padding: 1rem 1.5rem; }
-            .navbar .nav-links { justify-content: space-between; width: 100%; gap: 0.5rem; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; -webkit-overflow-scrolling: touch; }
-            .navbar .nav-links::-webkit-scrollbar { display: none; }
-            .navbar .nav-links a, .navbar .nav-links button.nav-btn { padding: 0.7rem 1.2rem; background: #f1f5f9; border-radius: 12px; font-size: 0.95rem; white-space: nowrap; flex-shrink: 0; flex-grow: 1; text-align: center; }
-            .content-section, .admin-section { margin: 1rem; padding: 1.5rem; width: auto; border-radius: 16px; }
+            const password_hash = await hashPassword(password);
+            const userDb = await env.DB.prepare("SELECT id, username, role, status FROM Users WHERE username = ? AND password_hash = ?").bind(username, password_hash).first();
             
-            #recent-grid.home-limit .recent-card:nth-child(n+4) { display: none !important; }
+            if (!userDb) return jsonResponse({ error: '用户名或密码错误' }, 401, request);
+            if (userDb.status === 'banned') return jsonResponse({ error: '账户已被封禁' }, 403, request);
             
-            .profile-header { flex-direction: column; text-align: center; gap: 1.5rem; margin: 1rem; border-radius: 16px; padding: 2rem 1.5rem; }
-            .profile-info h3 { justify-content: center; flex-wrap: wrap; }
-            .profile-header > div:last-child { width: 100%; }
-            .profile-header .btn { width: 100%; }
-
-            /* 移动端长条历史记录排版调整 */
-            .history-item { flex-direction: column; align-items: flex-start; gap: 0.8rem; padding: 1.25rem; }
-            .hi-progress-wrap { width: 100%; }
-            .hi-time { text-align: left; width: 100%; border-top: 1px dashed var(--border-color); padding-top: 0.8rem; }
-
-            /* 🔥 核心修复：强制移动端的书名和章节名换行，防止撑爆屏幕 */
-            .recent-card h4, 
-            .recent-card .chapter-name,
-            .hi-info h4, 
-            .hi-info span {
-                white-space: normal !important;        /* 覆盖掉电脑端的 nowrap */
-                word-wrap: break-word !important;      /* 允许在单词内换行 */
-                word-break: break-all !important;      /* 强制打断长字符串/拼音/数字 */
-                overflow: visible !important;          /* 防止被隐藏 */
-                text-overflow: clip !important;        /* 清除省略号 */
-                line-height: 1.5;                      /* 增加行高提升多行阅读体验 */
-            }
-
-            table, thead, tbody, th, td, tr { display: block; }
-            thead tr { display: none; }
-            tr { margin-bottom: 1.2rem; border: 1px solid var(--border-color); border-radius: 16px; padding: 1.25rem; }
-            td { border: none; padding: 0.5rem 0; display: flex; justify-content: space-between; align-items: center; text-align: right; }
-            td:before { content: attr(data-label); font-weight: 600; color: var(--text-secondary); }
-            .actions { margin-top: 1.2rem; padding-top: 1.2rem; border-top: 1px solid #f1f5f9; display: flex; gap: 0.8rem; }
-            .actions button { margin: 0; flex: 1; }
+            const token = btoa(JSON.stringify({ id: userDb.id, username: userDb.username, role: userDb.role }));
+            return jsonResponse({ token, user: { id: userDb.id, username: userDb.username, role: userDb.role } }, 200, request);
         }
-    </style>
-</head>
-<body>
-    <script>
-        if (!localStorage.getItem('token')) { window.location.replace('index.html'); }
-    </script>
 
-    <div id="app"></div>
-    <div id="modal-container" class="hidden"></div>
-
-    <script>
-        const app = document.getElementById('app');
-        const modalContainer = document.getElementById('modal-container');
+        // [Auth Check]
+        const user = getUserFromToken(request);
+        if (!user || !user.id) return jsonResponse({ error: 'Session expired', status: 401 }, 401, request);
+        const userId = user.id;
         
-        // API Config
-        const getApiBase = () => {
-            const host = window.location.hostname;
-            if (host.includes('novel-pro.505616.xyz')) return 'https://novel-pro.505616.xyz/api';
-            if (host.includes('novel-pro.zzsp.me')) return 'https://novel-pro.zzsp.me/api';
-            if (host.includes('www.620100.xyz')) return 'https://www.620100.xyz/api';
-            return '/api';
-        };
-        const apiBase = getApiBase();
-        
-        // Auth
-        const auth = {
-            _token: null, _user: null,
-            init() { 
-                this._token = localStorage.getItem('token'); 
-                this._user = JSON.parse(localStorage.getItem('user')); 
-            },
-            get() { return { token: this._token, user: this._user }; },
-            isAdmin() { return this._user && this._user.role === 'admin'; },
-            logout() { 
-                localStorage.removeItem('token'); localStorage.removeItem('user'); 
-                window.location.href = 'index.html';
-            }
-        };
-
-        const apiRequest = async (endpoint, method = 'GET', body = null) => { 
-            const { token } = auth.get(); 
-            if (!token) { window.location.href = 'index.html'; throw new Error('Auth needed'); } 
-            const options = { method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` } }; 
-            if (body) options.body = JSON.stringify(body); 
-            const response = await fetch(`${apiBase}${endpoint}`, options); 
-            if (response.status === 401) { auth.logout(); return; } 
-            if (!response.ok) { 
-                const errorData = await response.json().catch(() => ({})); 
-                throw new Error(errorData.error || `HTTP ${response.status}`); 
-            } 
-            return response.status === 204 ? null : response.json(); 
-        };
-
-        const getNovelDomain = () => {
-             const host = window.location.hostname;
-             if (host.includes('novel-pro.505616.xyz')) return '505616.xyz';
-             if (host.includes('novel-pro.zzsp.me')) return 'zzsp.me';
-             if (host.includes('www.620100.xyz')) return '620100.xyz';
-             return '20100505.xyz';
-        };
-
-        // UTC 时间转本地时间格式化工具
-        const formatLocalTime = (utcStr) => {
-            if (!utcStr) return '未知';
-            const d = new Date(utcStr.replace(' ', 'T') + 'Z');
-            if (isNaN(d)) return utcStr;
-            return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
-        };
-
-        // Tab 切换逻辑
-        window.switchProfileTab = (tabId) => {
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.querySelector(`[onclick="switchProfileTab('${tabId}')"]`).classList.add('active');
-            document.getElementById(`tab-${tabId}`).classList.add('active');
-        };
-
-        // --- Nav ---
-        const renderNavbar = () => { 
-            const { user } = auth.get(); 
-            const currentPath = window.location.hash || '#/'; 
-            
-            let linksHtml = `<a href="#/" class="${currentPath === '#/' ? 'active' : ''}">书库</a>`;
-            linksHtml += `<a href="#/profile" class="${currentPath === '#/profile' ? 'active' : ''}">个人中心</a>`;
-            if (auth.isAdmin()) {
-                linksHtml += `<a href="#/admin" class="${currentPath === '#/admin' ? 'active' : ''}">管理后台</a>`;
-            }
-            linksHtml += `<button class="nav-btn" onclick="auth.logout()">退出登录</button>`;
-
-            return `
-            <div class="navbar">
-                <a href="#/" class="logo">我的私人导航站</a>
-                <div class="nav-links">${linksHtml}</div>
-            </div>`; 
-        };
-
-        // --- Render Reading Records ---
-        const fetchAndRenderReadingRecords = async (containerId, layout = 'grid') => {
-            try {
-                const records = await apiRequest('/progress');
-                const container = document.getElementById(containerId);
-                const section = document.getElementById(containerId + '-section');
-                
-                if (!records || records.length === 0) {
-                    if (section) section.style.display = 'none';
-                    else container.innerHTML = '<div style="grid-column: 1/-1;" class="empty-state">暂无阅读记录</div>';
-                    return;
+        // [API] Users
+        if (pathParts[0] === 'users') {
+            if (request.method === 'GET') {
+                // 【新增】获取当前登录用户详情（包含注册时间 created_at）
+                if (pathParts[1] === 'me') {
+                    const userInfo = await env.DB.prepare("SELECT id, username, role, status, created_at FROM Users WHERE id = ?").bind(userId).first();
+                    return jsonResponse(userInfo, 200, request);
                 }
                 
-                const novelDomain = getNovelDomain();
-                container.innerHTML = records.map(r => {
-                    const cleanChapterName = r.chapter_id ? r.chapter_id.replace('.txt', '').replace(/^\d+_/, '') : '未知章节';
-                    const targetUrl = `https://${r.subdomain || r.novel_id}.${novelDomain}`;
-                    
-                    if (layout === 'grid') {
-                        return `
-                            <a href="${targetUrl}" class="recent-card" target="_blank">
-                                <h4>${r.name || '未知书籍'}</h4>
-                                <p class="chapter-name">阅读至：${cleanChapterName}</p>
-                                <div class="progress-bar-bg">
-                                    <div class="progress-bar-fill" style="width: ${r.position}%"></div>
-                                </div>
-                                <div class="progress-text">${r.position}%</div>
-                            </a>
-                        `;
-                    } else {
-                        return `
-                            <a href="${targetUrl}" class="history-item" target="_blank">
-                                <div class="hi-info">
-                                    <h4>${r.name || '未知书籍'}</h4>
-                                    <span>阅读至：${cleanChapterName}</span>
-                                </div>
-                                <div class="hi-progress-wrap">
-                                    <div style="display:flex; justify-content:space-between; font-size:0.8rem; margin-bottom:0.4rem; color:var(--text-secondary); font-weight:600;">
-                                        <span>阅读进度</span><span>${r.position}%</span>
-                                    </div>
-                                    <div class="progress-bar-bg" style="margin:0;"><div class="progress-bar-fill" style="width: ${r.position}%"></div></div>
-                                </div>
-                                <div class="hi-time">
-                                    最后阅读：<br/>${formatLocalTime(r.updated_at)}
-                                </div>
-                            </a>
-                        `;
-                    }
-                }).join('');
-                
-                if (section) section.style.display = 'block';
-            } catch (e) { console.error('获取阅读记录失败:', e); }
-        };
+                // 管理员获取所有用户
+                if (user.role !== 'admin') return jsonResponse({ error: '无权操作' }, 403, request);
+                const { results } = await env.DB.prepare("SELECT id, username, role, status FROM Users").all();
+                return jsonResponse(results, 200, request);
+            }
 
-        // --- Pages ---
-        const renderHomePage = async () => { 
-            app.innerHTML = renderNavbar() + `
-                <div id="announcement-bar"></div>
+            // Admin Create User
+            if (request.method === 'POST') {
+                if (user.role !== 'admin') return jsonResponse({ error: '无权操作' }, 403, request);
+                const { username, password, role } = await request.json();
+                if (!username || !password) return jsonResponse({ error: '信息不完整' }, 400, request);
                 
-                <div id="recent-grid-section" class="content-section" style="display: none;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                        <h2 style="margin-bottom: 0;">⏱️ 继续阅读</h2>
-                        <a href="#/profile" class="btn btn-outline" style="padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.85rem;" onclick="setTimeout(()=>switchProfileTab('history'), 100)">全部记录 ➔</a>
-                    </div>
-                    <div id="recent-grid" class="recent-grid home-limit"></div>
-                </div>
-
-                <div class="content-section">
-                    <h2>📚 我的书库</h2>
-                    <div id="novels-grid" class="card-grid"></div>
-                </div>`; 
-            
-            fetchAndRenderAnnouncements(); 
-            fetchAndRenderReadingRecords('recent-grid', 'grid');
-            
-            try { 
-                const novels = await apiRequest('/sites?type=novel'); 
-                const novelDomain = getNovelDomain();
-                document.getElementById('novels-grid').innerHTML = novels.length ? novels.map(n => `
-                    <div class="novel-card">
-                        <h3>${n.name}</h3>
-                        ${n.author ? `<details><summary>作者</summary><div class="details-content">${n.author}</div></details>` : ''}
-                        ${n.description ? `<details><summary>简介</summary><div class="details-content">${n.description}</div></details>` : ''}
-                        <a href="https://${n.subdomain}.${novelDomain}" class="btn btn-primary" target="_blank">开始阅读</a>
-                    </div>`).join('') : '<p style="text-align:center;color:#999;width:100%;grid-column:1/-1;padding:2rem;">暂无书籍。</p>'; 
-            } catch (error) { 
-                document.getElementById('novels-grid').innerHTML = `<p style="color:red;text-align:center;">加载失败: ${error.message}</p>`; 
-            } 
-        };
-
-        const renderProfilePage = async () => {
-            app.innerHTML = renderNavbar() + '<div style="text-align:center;padding:4rem;color:var(--text-secondary);">正在加载个人数据...</div>';
-            
-            try {
-                const userInfo = await apiRequest('/users/me');
+                const exists = await env.DB.prepare("SELECT id FROM Users WHERE username = ?").bind(username).first();
+                if (exists) return jsonResponse({ error: '用户名已存在' }, 409, request);
                 
-                let roleName = '普通用户'; let roleColor = '#475569'; let roleBg = '#f1f5f9';
-                if (userInfo.role === 'admin') {
-                    if (userInfo.id === 1) { roleName = '站长 (超级管理)'; roleColor = '#b91c1c'; roleBg = '#fee2e2'; } 
-                    else { roleName = '管理员'; roleColor = '#1d4ed8'; roleBg = '#dbeafe'; }
+                const phash = await hashPassword(password);
+                const newRole = role === 'admin' ? 'admin' : 'user';
+                await env.DB.prepare("INSERT INTO Users (username, password_hash, role, status) VALUES (?, ?, ?, 'active')").bind(username, phash, newRole).run();
+                return jsonResponse({ message: 'Created' }, 201, request);
+            }
+
+            if (request.method === 'PUT' && pathParts[1]) {
+                const targetId = parseInt(pathParts[1]);
+                const action = pathParts[2]; 
+                const body = await request.json();
+
+                if (action === 'password') {
+                    if (targetId !== userId && user.role !== 'admin') return jsonResponse({ error: '无权操作' }, 403, request);
+                    if (!body.password) return jsonResponse({ error: '密码不能为空' }, 400, request);
+                    const phash = await hashPassword(body.password);
+                    await env.DB.prepare("UPDATE Users SET password_hash = ? WHERE id = ?").bind(phash, targetId).run();
+                    return jsonResponse({ message: 'Success' }, 200, request);
+                } 
+                
+                if (action === 'status' || action === 'role') {
+                    if (user.role !== 'admin') return jsonResponse({ error: '无权操作' }, 403, request);
+                    if (targetId === ROOT_ADMIN_ID) return jsonResponse({ error: '无法修改根管理员' }, 403, request);
+                    if (action === 'status') await env.DB.prepare("UPDATE Users SET status = ? WHERE id = ?").bind(body.status, targetId).run();
+                    if (action === 'role') await env.DB.prepare("UPDATE Users SET role = ? WHERE id = ?").bind(body.role, targetId).run();
+                    return jsonResponse({ message: 'Success' }, 200, request);
                 }
+            }
+            
+            if (request.method === 'DELETE' && pathParts[1]) {
+                if (user.role !== 'admin') return jsonResponse({ error: '无权操作' }, 403, request);
+                const targetId = parseInt(pathParts[1]);
+                if (targetId === ROOT_ADMIN_ID || targetId === userId) return jsonResponse({ error: '无法删除该账户' }, 403, request);
+                await env.DB.prepare("DELETE FROM Users WHERE id = ?").bind(targetId).run();
+                return jsonResponse({ message: 'Deleted' }, 200, request);
+            }
+        }
 
-                const createdStr = userInfo.created_at || new Date().toISOString();
-                const joinDate = new Date(createdStr.replace(' ', 'T') + 'Z');
-                const daysUsed = Math.max(0, Math.floor((Date.now() - joinDate) / (1000 * 60 * 60 * 24)));
-                const joinDateFormatted = formatLocalTime(createdStr);
+        // [API] Sites
+        if (pathParts[0] === 'sites') { 
+             if (request.method === 'GET') { 
+                const type = url.searchParams.get('type'); 
+                const stmt = type ? env.DB.prepare("SELECT * FROM Sites WHERE type = ? ORDER BY name").bind(type) : env.DB.prepare("SELECT * FROM Sites ORDER BY name");
+                const { results } = await stmt.all(); 
+                return jsonResponse(results, 200, request); 
+            } 
+            if (user.role !== 'admin') return jsonResponse({ error: '无权操作' }, 403, request); 
+            if (request.method === 'POST') { 
+                const d = await request.json(); 
+                await env.DB.prepare("INSERT INTO Sites (name, subdomain, type, author, description) VALUES (?, ?, ?, ?, ?)").bind(d.name, d.subdomain, d.type, d.author, d.description).run(); 
+                return jsonResponse({ message: 'Success' }, 201, request); 
+            } 
+            if (request.method === 'PUT' && pathParts[1]) { 
+                const d = await request.json(); 
+                await env.DB.prepare("UPDATE Sites SET name=?, subdomain=?, type=?, author=?, description=? WHERE id=?").bind(d.name, d.subdomain, d.type, d.author, d.description, pathParts[1]).run(); 
+                return jsonResponse({ message: 'Success' }, 200, request); 
+            } 
+            if (request.method === 'DELETE' && pathParts[1]) { 
+                await env.DB.prepare("DELETE FROM Sites WHERE id = ?").bind(pathParts[1]).run(); 
+                return jsonResponse(null, 204, request); 
+            } 
+        }
 
-                app.innerHTML = renderNavbar() + `
-                    <div class="profile-header">
-                        <div class="profile-avatar">👤</div>
-                        <div class="profile-info">
-                            <h3>${userInfo.username} <span class="role-badge" style="color:${roleColor}; background:${roleBg};">${roleName}</span></h3>
-                            <p style="color: var(--text-secondary); margin: 0; font-size: 0.95rem;">欢迎来到你的个人中心，在这里管理你的阅读足迹和个性化设置。</p>
-                        </div>
-                        <div>
-                            <button class="btn btn-outline" style="background:#fff; z-index: 2; position:relative;" onclick="showUserPasswordModal(${userInfo.id})">🔒 修改密码</button>
-                        </div>
-                    </div>
-
-                    <div class="content-section" style="padding: 1.5rem 2.5rem;">
-                        <div class="profile-tabs">
-                            <button class="tab-btn active" onclick="switchProfileTab('overview')">📊 数据概览</button>
-                            <button class="tab-btn" onclick="switchProfileTab('history')">⏱️ 阅读记录</button>
-                            <button class="tab-btn" onclick="switchProfileTab('snippets')">📝 喜欢段落</button>
-                        </div>
-
-                        <div id="tab-overview" class="tab-content active">
-                            <div class="stat-card">
-                                <div class="stat-label">不知不觉，已经陪伴您的第</div>
-                                <div class="stat-value">${daysUsed} <span style="font-size: 1.5rem;">天</span></div>
-                                <div class="stat-desc">账户注册于：${joinDateFormatted}</div>
-                            </div>
-                        </div>
-
-                        <div id="tab-history" class="tab-content">
-                            <div id="profile-history-list" class="history-list">
-                                <p style="color:#999; padding:1rem;">数据拉取中...</p>
-                            </div>
-                        </div>
-
-                        <div id="tab-snippets" class="tab-content">
-                            <div class="empty-state">
-                                <span style="font-size: 2.5rem; display: block; margin-bottom: 1rem;">✒️</span>
-                                暂无喜欢的段落，摘录功能正在火热开发中敬请期待...
-                            </div>
-                        </div>
-                    </div>
+        // [API] Progress
+        if (pathParts[0] === 'progress') {
+            if (request.method === 'POST') {
+                const { novel_id, chapter_id, position } = await request.json();
+                const stmt = `INSERT INTO ReadingRecords (user_id, novel_id, chapter_id, position, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP) ON CONFLICT(user_id, novel_id) DO UPDATE SET chapter_id=excluded.chapter_id, position=excluded.position, updated_at=CURRENT_TIMESTAMP`;
+                await env.DB.prepare(stmt).bind(userId, novel_id, chapter_id, position).run();
+                return jsonResponse({ message: 'saved' }, 200, request);
+            }
+            if (request.method === 'GET' && !pathParts[1]) {
+                const stmt = `
+                    SELECT r.novel_id, r.chapter_id, r.position, r.updated_at, s.name, s.subdomain 
+                    FROM ReadingRecords r 
+                    JOIN Sites s ON (r.novel_id || '-pro') = s.subdomain 
+                    WHERE r.user_id = ? 
+                    ORDER BY r.updated_at DESC 
+                    LIMIT 1000
                 `;
-                fetchAndRenderReadingRecords('profile-history-list', 'list');
-            } catch (e) {
-                app.innerHTML = renderNavbar() + `<p style="color:red; text-align:center;">个人信息加载失败: ${e.message}</p>`;
+                const { results } = await env.DB.prepare(stmt).bind(userId).all();
+                return jsonResponse(results || [], 200, request);
             }
-        };
+            if (request.method === 'GET' && pathParts[1]) {
+                const record = await env.DB.prepare("SELECT chapter_id, position FROM ReadingRecords WHERE user_id = ? AND novel_id = ?").bind(userId, pathParts[1]).first();
+                return jsonResponse(record || null, 200, request);
+            }
+        }
 
-        const renderAdminPage = async () => { 
-            if (!auth.isAdmin()) { router.navigate('/'); return; } 
-            
-            app.innerHTML = renderNavbar() + `
-                <div class="admin-section">
-                    <h2>站点管理 <button class="btn btn-primary" style="font-size:0.85rem;" onclick="showSiteModal()">+ 新增站点</button></h2>
-                    <div class="table-wrapper">
-                        <table>
-                            <thead><tr><th>名称</th><th>子域名</th><th>类型</th><th>操作</th></tr></thead>
-                            <tbody id="sites-table"></tbody>
-                        </table>
-                    </div>
-                </div>
-                
-                <div class="admin-section">
-                    <h2>用户管理 <button class="btn btn-primary" style="font-size:0.85rem;" onclick="showCreateUserModal()">+ 注册用户</button></h2>
-                    <div class="table-wrapper">
-                        <table>
-                            <thead><tr><th>用户名</th><th>角色</th><th>状态</th><th>操作</th></tr></thead>
-                            <tbody id="users-table"></tbody>
-                        </table>
-                    </div>
-                </div>
-                
-                <div class="admin-section">
-                    <h2>发布公告</h2>
-                    <form id="global-announcement-form">
-                        <div class="form-group"><textarea id="global-announcement" rows="3" required placeholder="输入公告内容..." style="resize:vertical;"></textarea></div>
-                        <button type="submit" class="btn btn-primary">发布全员公告</button>
-                    </form>
-                </div>`; 
-            loadAdminData(); 
-            document.getElementById('global-announcement-form').onsubmit = handleSendGlobalAnnouncement; 
-        };
-
-        const loadAdminData = async () => { 
-            const sitesTable = document.getElementById('sites-table'); 
-            const usersTable = document.getElementById('users-table'); 
-            sitesTable.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:2rem;">加载中...</td></tr>'; 
-            usersTable.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:2rem;">加载中...</td></tr>'; 
-            try { 
-                const [sites, users] = await Promise.all([apiRequest('/sites'), apiRequest('/users')]); 
-                sitesTable.innerHTML = sites.map(s => `<tr><td data-label="名称">${s.name}</td><td data-label="子域名">${s.subdomain}</td><td data-label="类型"><span style="background:#e0f2fe;color:#0284c7;padding:4px 8px;border-radius:6px;font-size:0.85em;font-weight:600;">${s.type}</span></td><td data-label="操作" class="actions"><button class="btn btn-outline" onclick='showSiteModal(${JSON.stringify(s)})'>编辑</button><button class="btn btn-danger" onclick="handleDeleteSite(${s.id})">删除</button></td></tr>`).join(''); 
-                usersTable.innerHTML = users.map(u => `<tr><td data-label="用户名">${u.username}</td><td data-label="角色">${u.role}</td><td data-label="状态"><span style="padding:4px 8px;border-radius:6px;background:${u.status==='active'?'#dcfce7':'#fee2e2'};color:${u.status==='active'?'#15803d':'#b91c1c'};font-size:0.85em;font-weight:600;">${u.status}</span></td><td data-label="操作" class="actions"><button class="btn btn-outline" onclick='showUserPasswordModal(${u.id})'>改密</button><button class="btn ${u.status === 'active' ? 'btn-danger':'btn-primary'}" onclick='handleUserStatusChange(${u.id}, "${u.status==='active'?'banned':'active'}")'>${u.status==='active'?'封禁':'解封'}</button><button class="btn btn-outline" onclick='handleUserRoleChange(${u.id}, "${u.role==='user'?'admin':'user'}")'>${u.role==='user'?'设为管理':'取消'}</button><button class="btn btn-outline" onclick='showUserAnnounceModal(${u.id})'>私信</button><button class="btn btn-danger" onclick="handleDeleteUser(${u.id})">删除</button></td></tr>`).join(''); 
-            } catch (error) { 
-                sitesTable.innerHTML = `<tr><td colspan="4" style="color:red;">${error.message}</td></tr>`; 
-                usersTable.innerHTML = `<tr><td colspan="4" style="color:red;">${error.message}</td></tr>`; 
+        // [API] Announcements
+        if (pathParts[0] === 'announcements') { 
+            if (request.method === 'GET') { 
+                const { results } = await env.DB.prepare("SELECT id, content FROM Announcements WHERE user_id = ? AND is_read = 0 ORDER BY created_at DESC").bind(userId).all(); 
+                return jsonResponse(results, 200, request); 
             } 
-        };
+            if (request.method === 'PUT' && pathParts[2] === 'read') {
+                 await env.DB.prepare("UPDATE Announcements SET is_read = 1 WHERE id = ? AND user_id = ?").bind(pathParts[1], userId).run(); 
+                 return jsonResponse(null, 204, request);
+            }
+            if (request.method === 'POST') {
+                if (user.role !== 'admin') return jsonResponse({ error: '无权操作' }, 403, request);
+                const { userId: targetUid, content, isGlobal } = await request.json();
+                if (isGlobal) {
+                    const allUsers = await env.DB.prepare("SELECT id FROM Users").all();
+                    const stmt = env.DB.prepare("INSERT INTO Announcements (user_id, content, is_read) VALUES (?, ?, 0)");
+                    const batch = allUsers.results.map(u => stmt.bind(u.id, content));
+                    await env.DB.batch(batch);
+                } else if (targetUid) {
+                    await env.DB.prepare("INSERT INTO Announcements (user_id, content, is_read) VALUES (?, ?, 0)").bind(targetUid, content).run();
+                }
+                return jsonResponse({ message: 'Sent' }, 201, request);
+            }
+        }
 
-        // --- Basic Handlers ---
-        const handleSaveSite = async () => { 
-            try { 
-                const id = document.getElementById('site-id').value; 
-                const body = { name: document.getElementById('site-name').value, subdomain: document.getElementById('site-subdomain').value, type: document.getElementById('site-type').value, author: document.getElementById('site-author').value, description: document.getElementById('site-description').value }; 
-                if (id) await apiRequest(`/sites/${id}`, 'PUT', body); else await apiRequest('/sites', 'POST', body); 
-                hideModal(); loadAdminData(); 
-            } catch (e) { alert(`保存失败: ${e.message}`); } 
-        };
-        const handleDeleteSite = async (id) => { if (confirm('确定要删除吗？')) try { await apiRequest(`/sites/${id}`, 'DELETE'); loadAdminData(); } catch (e) { alert(e.message); } };
-        const handleDeleteUser = async (id) => { if (confirm('不可逆操作！确定要永久删除吗？')) try { await apiRequest(`/users/${id}`, 'DELETE'); loadAdminData(); } catch (e) { alert(e.message); } };
-        const handleUserPasswordChange = async (id) => { const password = document.getElementById('new-pass').value; if(password) try { await apiRequest(`/users/${id}/password`, 'PUT', {password}); hideModal(); alert('密码修改成功'); } catch(e){ alert(e.message); } };
-        const handleUserStatusChange = async (id, status) => { try { await apiRequest(`/users/${id}/status`, 'PUT', {status}); loadAdminData(); } catch(e){ alert(e.message); }};
-        const handleUserRoleChange = async (id, role) => { try { await apiRequest(`/users/${id}/role`, 'PUT', {role}); loadAdminData(); } catch(e){ alert(e.message); }};
-        
-        const fetchAndRenderAnnouncements = async () => { 
-            const bar = document.getElementById('announcement-bar'); 
-            if (!bar) return; 
-            try { 
-                const announcements = await apiRequest('/announcements'); 
-                bar.innerHTML = announcements.length > 0 ? announcements.map(a => `<div style="background:#fffbeb;color:#92400e;padding:1rem 1.5rem;border-radius:12px;margin-bottom:1.5rem;border:1px solid #fcd34d;display:flex;justify-content:space-between;align-items:center;"><span>${a.content}</span><button onclick="markAnnouncementAsRead(${a.id})" style="background:white;border:1px solid #d97706;color:#d97706;padding:4px 12px;border-radius:6px;cursor:pointer;font-weight:600;">已知晓</button></div>`).join('') : ''; 
-            } catch (e) { console.error(e); } 
-        };
-        const markAnnouncementAsRead = async (id) => { try { await apiRequest(`/announcements/${id}/read`, 'PUT'); fetchAndRenderAnnouncements(); } catch (e) { alert(e.message); } };
-        const handleSendGlobalAnnouncement = async (e) => { e.preventDefault(); const content = document.getElementById('global-announcement').value; if(content) try { await apiRequest('/announcements', 'POST', {isGlobal: true, content}); document.getElementById('global-announcement').value=''; alert('全局公告已发布'); } catch(e){ alert(e.message); }};
-        const handleSendPrivateAnnouncement = async (id) => { const content = document.getElementById('private-announce').value; if(content) try { await apiRequest('/announcements', 'POST', {userId: id, content}); hideModal(); alert('私信已发送'); } catch(e){ alert(e.message); }};
-        const handleCreateUser = async () => { const u = document.getElementById('create-username').value; const p = document.getElementById('create-password').value; if (u && p) { try { await apiRequest('/users', 'POST', { username: u, password: p, role: 'user' }); hideModal(); loadAdminData(); alert('用户创建成功'); } catch(e) { alert(e.message); } } else alert('请填写完整'); };
-
-        // --- Modals ---
-        const showModal = (title, content, footer) => { modalContainer.innerHTML = `<div class="modal-backdrop"><div class="modal"><div class="modal-header"><h3>${title}</h3><button onclick="hideModal()" style="border:none;background:transparent;font-size:1.8rem;cursor:pointer;color:#94a3b8;line-height:1;">&times;</button></div><div class="modal-body">${content}</div><div class="modal-footer">${footer}</div></div></div>`; modalContainer.classList.remove('hidden'); };
-        const hideModal = () => modalContainer.classList.add('hidden');
-        const showSiteModal = (site = null) => { const isEdit = site !== null; showModal(isEdit ? '编辑站点' : '添加新站点', `<form id="site-form"><input type="hidden" id="site-id" value="${site?.id || ''}"><div class="form-group"><label>名称</label><input type="text" id="site-name" value="${site?.name || ''}" required></div><div class="form-group"><label>子域名</label><input type="text" id="site-subdomain" value="${site?.subdomain || ''}" required></div><div class="form-group"><label>类型</label><select id="site-type"><option value="novel" ${site?.type === 'novel' ? 'selected' : ''}>小说</option><option value="navlink" ${site?.type === 'navlink' ? 'selected' : ''}>链接</option></select></div><div class="form-group"><label>作者</label><input type="text" id="site-author" value="${site?.author || ''}"></div><div class="form-group"><label>简介</label><textarea id="site-description" rows="3">${site?.description || ''}</textarea></div></form>`, `<button class="btn btn-outline" onclick="hideModal()">取消</button><button class="btn btn-primary" onclick="handleSaveSite()">保存</button>`); };
-        const showUserPasswordModal = (id) => { showModal('修改密码', `<div class="form-group"><label>新密码</label><input type="password" id="new-pass" required></div>`, `<button class="btn btn-outline" onclick="hideModal()">取消</button><button class="btn btn-primary" onclick="handleUserPasswordChange(${id})">确认修改</button>`); };
-        const showUserAnnounceModal = (id) => { showModal('发送私信', `<div class="form-group"><label>私信内容</label><textarea id="private-announce" rows="3" required></textarea></div>`, `<button class="btn btn-outline" onclick="hideModal()">取消</button><button class="btn btn-primary" onclick="handleSendPrivateAnnouncement(${id})">发送</button>`); };
-        const showCreateUserModal = () => { showModal('注册新用户', `<div class="form-group"><label>用户名</label><input type="text" id="create-username" required></div><div class="form-group"><label>初始密码</label><input type="password" id="create-password" required></div>`, `<button class="btn btn-outline" onclick="hideModal()">取消</button><button class="btn btn-primary" onclick="handleCreateUser()">创建</button>`); };
-
-        // --- Router ---
-        const router = { 
-            routes: { 
-                '/': renderHomePage, 
-                '/profile': renderProfilePage, 
-                '/admin': renderAdminPage 
-            }, 
-            navigate(path) { window.location.hash = path; }, 
-            handler() { 
-                const path = (window.location.hash.replace('#', '') || '/').split('?')[0]; 
-                (this.routes[path] || this.routes['/'])(); 
-                window.scrollTo(0, 0);
-            } 
-        };
-
-        const main = () => { 
-            auth.init(); 
-            window.addEventListener('hashchange', () => router.handler()); 
-            router.handler(); 
-        };
-        main();
-    </script>
-</body>
-</html>
+        return jsonResponse({ error: `Not Found` }, 404, request);
+    } catch (e) {
+        return jsonResponse({ error: 'Server Error', details: e.message }, 500, request);
+    }
+}
