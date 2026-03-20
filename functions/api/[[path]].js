@@ -7,7 +7,7 @@
  * 4. 管理员创建用户 (POST /users)
  * 5. 公告/私信 (POST /announcements)
  * 6. 移除了公开注册接口
- * 7. [新增] 进度管理: 获取用户近期所有阅读记录
+ * 7. [新增] 进度管理: 获取用户近期所有阅读记录 (自动拼接 -pro 匹配子域名)
  * ================================================================= */
 
 const ROOT_ADMIN_ID = 1;
@@ -167,12 +167,12 @@ async function handleApiRequest(context) {
                 await env.DB.prepare(stmt).bind(userId, novel_id, chapter_id, position).run();
                 return jsonResponse({ message: 'saved' }, 200, request);
             }
-            // 【新增】: 获取用户所有的最近阅读记录 (联表查询站点表获取书名)
+            // 【新增】：获取用户所有的最近阅读记录，使用 || '-pro' 完美连接孤立的表格
             if (request.method === 'GET' && !pathParts[1]) {
                 const stmt = `
                     SELECT r.novel_id, r.chapter_id, r.position, r.updated_at, s.name, s.subdomain 
                     FROM ReadingRecords r 
-                    LEFT JOIN Sites s ON r.novel_id = s.subdomain 
+                    JOIN Sites s ON (r.novel_id || '-pro') = s.subdomain 
                     WHERE r.user_id = ? 
                     ORDER BY r.updated_at DESC 
                     LIMIT 4
