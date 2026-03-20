@@ -102,6 +102,24 @@
         }
         .content-section:hover, .admin-section:hover { box-shadow: var(--shadow-md); }
 
+        /* 【新增】Recent Reading Section */
+        .recent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1.5rem; }
+        .recent-card {
+            background: linear-gradient(135deg, #ffffff, #f8fafc);
+            border: 1px solid var(--border-color); border-radius: var(--radius);
+            padding: 1.25rem 1.5rem; display: flex; flex-direction: column; gap: 0.5rem;
+            transition: all 0.3s ease; text-decoration: none; position: relative;
+        }
+        .recent-card:hover { 
+            transform: translateY(-4px); box-shadow: var(--shadow-md); 
+            border-color: #a5b4fc;
+        }
+        .recent-card h4 { margin: 0; font-size: 1.15rem; color: var(--text-main); font-weight: 700; }
+        .recent-card .chapter-name { margin: 0; color: var(--text-secondary); font-size: 0.85rem; }
+        .progress-bar-bg { width: 100%; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 0.5rem;}
+        .progress-bar-fill { height: 100%; background: var(--primary-color); transition: width 0.3s ease; }
+        .progress-text { text-align: right; font-size: 0.8rem; color: var(--primary-color); font-weight: 600; margin-top: 0.2rem; }
+
         /* Novel Cards */
         .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 2rem; }
         .novel-card {
@@ -331,15 +349,61 @@
             </div>`; 
         };
 
+        // 【新增】获取并渲染最近阅读记录
+        const fetchAndRenderRecentReading = async () => {
+            try {
+                const records = await apiRequest('/progress');
+                if (!records || records.length === 0) return;
+                
+                const section = document.getElementById('recent-reading-section');
+                const grid = document.getElementById('recent-grid');
+                const novelDomain = getNovelDomain();
+                
+                grid.innerHTML = records.map(r => {
+                    // 美化章节名称，去掉 '.txt' 和可能存在的前缀 '001_' 
+                    const cleanChapterName = r.chapter_id ? r.chapter_id.replace('.txt', '').replace(/^\d+_/, '') : '未知章节';
+                    
+                    // 这里直接链接到小说的根域名即可
+                    // 因为 reader.html 里的 initialize() 已经实现了自动向后端请求进度并跳转的代码！
+                    const targetUrl = `https://${r.subdomain || r.novel_id}.${novelDomain}`;
+                    
+                    return `
+                        <a href="${targetUrl}" class="recent-card" target="_blank">
+                            <h4>${r.name || '未知书籍'}</h4>
+                            <p class="chapter-name">阅读至：${cleanChapterName}</p>
+                            <div class="progress-bar-bg">
+                                <div class="progress-bar-fill" style="width: ${r.position}%"></div>
+                            </div>
+                            <div class="progress-text">${r.position}%</div>
+                        </a>
+                    `;
+                }).join('');
+                
+                // 有数据才显示这个区块
+                section.style.display = 'block';
+            } catch (e) {
+                console.error('获取阅读记录失败:', e);
+            }
+        };
+
         const renderHomePage = async () => { 
             app.innerHTML = renderNavbar() + `
                 <div id="announcement-bar"></div>
+                
+                <!-- 【新增】最近阅读区块 (默认隐藏，有数据时显示) -->
+                <div id="recent-reading-section" class="content-section" style="display: none;">
+                    <h2>⏱️ 继续阅读</h2>
+                    <div id="recent-grid" class="recent-grid"></div>
+                </div>
+
                 <div class="content-section">
-                    <h2>我的书库</h2>
+                    <h2>📚 我的书库</h2>
                     <div id="novels-grid" class="card-grid"></div>
                 </div>`; 
             
             fetchAndRenderAnnouncements(); 
+            fetchAndRenderRecentReading(); // 调用最近阅读数据
+            
             try { 
                 const novels = await apiRequest('/sites?type=novel'); 
                 const novelDomain = getNovelDomain();
