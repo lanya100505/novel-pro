@@ -7,7 +7,8 @@
  * 4. 管理员创建用户 (POST /users)
  * 5. 公告/私信 (POST /announcements)
  * 6. 获取当前用户信息 (GET /users/me) 包含注册时间
- * 7. 进度管理: 获取用户近期所有阅读记录 (自动拼接 -pro, 放宽至 1000 条)
+ * 7. 进度管理: 获取用户近期所有阅读记录 (自动拼接 -pro)
+ * 8. [新增] 摘录管理: 增删查喜欢的段落 (Snippets)
  * ================================================================= */
 
 const ROOT_ADMIN_ID = 1;
@@ -83,19 +84,15 @@ async function handleApiRequest(context) {
         // [API] Users
         if (pathParts[0] === 'users') {
             if (request.method === 'GET') {
-                // 【新增】获取当前登录用户详情（包含注册时间 created_at）
                 if (pathParts[1] === 'me') {
                     const userInfo = await env.DB.prepare("SELECT id, username, role, status, created_at FROM Users WHERE id = ?").bind(userId).first();
                     return jsonResponse(userInfo, 200, request);
                 }
-                
-                // 管理员获取所有用户
                 if (user.role !== 'admin') return jsonResponse({ error: '无权操作' }, 403, request);
                 const { results } = await env.DB.prepare("SELECT id, username, role, status FROM Users").all();
                 return jsonResponse(results, 200, request);
             }
 
-            // Admin Create User
             if (request.method === 'POST') {
                 if (user.role !== 'admin') return jsonResponse({ error: '无权操作' }, 403, request);
                 const { username, password, role } = await request.json();
@@ -189,6 +186,37 @@ async function handleApiRequest(context) {
             if (request.method === 'GET' && pathParts[1]) {
                 const record = await env.DB.prepare("SELECT chapter_id, position FROM ReadingRecords WHERE user_id = ? AND novel_id = ?").bind(userId, pathParts[1]).first();
                 return jsonResponse(record || null, 200, request);
+            }
+        }
+
+        // [API] Snippets (摘录段落)
+        if (pathParts[0] === 'snippets') {
+            if (request.method === 'POST') {
+                const { novel_id, chapter_id, content, position } = await request.json();
+                if (!content || !novel_id || !chapter_id) return jsonResponse({ error: '参数不完整' }, 400, request);
+                
+                const stmt = `INSERT INTO Snippets (user_id, novel_id, chapter_id, content, position, created_at) VALUES (?, ?, ?, ?, ?, CURRENT_TIMESTAMP)`;
+                await env.DB.prepare(stmt).bind(userId, novel_id, chapter_id, content, position).run();
+                return jsonResponse({ message: 'Snippet saved' }, 201, request);
+            }
+
+            if (request.method === 'GET') {
+                const stmt = `
+                    SELECT sn.id, sn.novel_id, sn.chapter_id, sn.content, sn.position, sn.created_at, s.name, s.subdomain 
+                    FROM Snippets sn 
+                    JOIN Sites s ON (sn.novel_id || '-pro') = s.subdomain 
+                    WHERE sn.user_id = ? 
+                    ORDER BY sn.created_at DESC 
+                    LIMIT 1000
+                `;
+                const { results } = await env.DB.prepare(stmt).bind(userId).all();
+                return jsonResponse(results || [], 200, request);
+            }
+
+            if (request.method === 'DELETE' && pathParts[1]) {
+                const targetId = parseInt(pathParts[1]);
+                await env.DB.prepare("DELETE FROM Snippets WHERE id = ? AND user_id = ?").bind(targetId, userId).run();
+                return jsonResponse({ message: 'Deleted' }, 200, request);
             }
         }
 
