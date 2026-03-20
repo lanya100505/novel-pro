@@ -152,39 +152,48 @@
         .history-list { display: flex; flex-direction: column; gap: 1rem; }
         .history-item { 
             display: flex; align-items: center; background: #fff; border: 1px solid var(--border-color); 
-            border-radius: 12px; padding: 1.25rem 1.5rem; transition: all 0.2s; text-decoration: none; 
+            border-radius: 16px; padding: 1.25rem 1.5rem; transition: all 0.3s ease; text-decoration: none; 
             box-shadow: var(--shadow-sm); gap: 1.5rem;
         }
-        .history-item:hover { transform: translateX(4px); border-color: #a5b4fc; box-shadow: var(--shadow-md); }
+        .history-item:hover { transform: translateX(6px); border-color: #a5b4fc; box-shadow: var(--shadow-md); }
         .hi-info { flex: 2; display: flex; flex-direction: column; gap: 0.3rem; min-width: 0; }
         .hi-info h4 { margin: 0; font-size: 1.1rem; color: var(--text-main); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .hi-info span { color: var(--text-secondary); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .hi-progress-wrap { flex: 1; min-width: 150px; display: flex; flex-direction: column; justify-content: center; }
         .hi-time { flex: 1.2; text-align: right; color: #94a3b8; font-size: 0.85rem; font-family: monospace; }
 
-        /* 🔥 Snippets List (摘录栏目) */
-        .snippet-list { display: flex; flex-direction: column; gap: 1.25rem; }
+        /* 🔥 Snippets List (全新精装尊享版摘录卡片) */
+        .snippet-list { display: flex; flex-direction: column; gap: 1.5rem; }
         .snippet-item { 
-            background: #fff; border: 1px solid var(--border-color); border-radius: 12px; 
-            padding: 1.5rem; transition: all 0.2s; box-shadow: var(--shadow-sm); position: relative; 
+            background: #fff; border: 1px solid var(--border-color); border-radius: 16px; 
+            padding: 1.75rem; transition: all 0.3s ease; box-shadow: var(--shadow-sm); position: relative; 
+            overflow: hidden; z-index: 1;
         }
-        .snippet-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: #a5b4fc; }
+        /* 增加巨大的引号背景水印，提升格调 */
+        .snippet-item::before {
+            content: '❝'; position: absolute; top: -15px; left: 15px;
+            font-size: 7rem; color: var(--primary-color); opacity: 0.04;
+            font-family: Georgia, serif; line-height: 1; pointer-events: none; z-index: -1;
+        }
+        .snippet-item:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: #a5b4fc; }
         .snippet-content { 
-            font-size: 1.05rem; color: var(--text-main); line-height: 1.7; font-style: italic; 
-            margin-bottom: 1.25rem; padding-left: 1rem; border-left: 4px solid var(--primary-color); 
+            font-size: 1.05rem; color: var(--text-main); line-height: 1.8; font-style: normal; 
+            margin-bottom: 1.5rem; padding-left: 1.2rem; border-left: 4px solid var(--primary-color); 
+            font-weight: 500; letter-spacing: 0.02em;
         }
         .snippet-meta { 
             display: flex; justify-content: space-between; align-items: center; 
-            border-top: 1px dashed var(--border-color); padding-top: 1rem; flex-wrap: wrap; gap: 1rem; 
+            border-top: 1px dashed var(--border-color); padding-top: 1.25rem; flex-wrap: wrap; gap: 1rem; 
         }
-        .snippet-book { font-weight: 700; color: var(--primary-color); margin-right: 0.5rem; }
-        .snippet-chapter { font-size: 0.85rem; color: var(--text-secondary); }
-        .snippet-actions { display: flex; align-items: center; gap: 0.8rem; }
-        .snippet-time { font-size: 0.8rem; color: #94a3b8; font-family: monospace; }
+        .snippet-book { font-weight: 700; color: var(--primary-color); margin-right: 0.5rem; font-size: 0.95rem;}
+        .snippet-chapter { font-size: 0.85rem; color: var(--text-secondary); background: #f1f5f9; padding: 4px 10px; border-radius: 6px; }
+        .snippet-actions { display: flex; align-items: center; gap: 1rem; }
+        .snippet-time { font-size: 0.8rem; color: #94a3b8; font-family: monospace; letter-spacing: -0.5px;}
 
         .empty-state {
             text-align: center; padding: 4rem 1rem; color: var(--text-secondary); font-weight: 500;
             background: #f8fafc; border-radius: 16px; border: 2px dashed #cbd5e1;
+            animation: fadeInContent 0.5s ease;
         }
 
         /* -------------------------------------
@@ -235,10 +244,10 @@
         .modal-footer { margin-top: 2.5rem; text-align: right; display: flex; justify-content: flex-end; gap: 1rem; }
         .hidden { display: none !important; }
 
-        @keyframes fadeInContent { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes fadeInContent { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
         /* =========================================
-           移动端适配 
+           移动端适配 (核心优化区域) 
            ========================================= */
         @media (max-width: 768px) {
             #app { padding: 0; }
@@ -261,7 +270,11 @@
 
             .snippet-meta { flex-direction: column; align-items: flex-start; }
             .snippet-actions { width: 100%; justify-content: space-between; margin-top: 0.5rem; }
+            
+            /* 加大手机端删除按钮的点按面积，防止误触 */
+            .snippet-actions .btn { padding: 0.6rem 1rem !important; font-size: 0.9rem !important; }
 
+            /* 强制移动端的书名和章节名换行，防止撑爆屏幕 */
             .recent-card h4, .recent-card .chapter-name, .hi-info h4, .hi-info span, .snippet-book, .snippet-chapter {
                 white-space: normal !important; word-wrap: break-word !important; word-break: break-all !important;
                 overflow: visible !important; text-overflow: clip !important; line-height: 1.5;
@@ -333,7 +346,7 @@
              if (host.includes('novel-pro.505616.xyz')) return '505616.xyz';
              if (host.includes('novel-pro.zzsp.me')) return 'zzsp.me';
              if (host.includes('www.620100.xyz')) return '620100.xyz';
-             return '20100505.xyz';
+             return '20100505.xyz'; // 回退开发环境域名
         };
 
         const formatLocalTime = (utcStr) => {
@@ -381,7 +394,7 @@
                 
                 if (!records || records.length === 0) {
                     if (section) section.style.display = 'none';
-                    else container.innerHTML = '<div style="grid-column: 1/-1;" class="empty-state">暂无阅读记录</div>';
+                    else container.innerHTML = '<div style="grid-column: 1/-1;" class="empty-state">暂无阅读记录，快去书库挑选一本喜欢的书吧！</div>';
                     return;
                 }
                 
@@ -436,7 +449,7 @@
                     container.innerHTML = `
                         <div class="empty-state">
                             <span style="font-size: 2.5rem; display: block; margin-bottom: 1rem;">✒️</span>
-                            暂无喜欢的段落，去阅读器里划线收藏吧！
+                            暂无喜欢的段落，去阅读器里长按划线收藏吧！
                         </div>`;
                     return;
                 }
@@ -444,7 +457,6 @@
                 const novelDomain = getNovelDomain();
                 container.innerHTML = '<div class="snippet-list">' + snippets.map(s => {
                     const cleanChapterName = s.chapter_id ? s.chapter_id.replace('.txt', '').replace(/^\d+_/, '') : '未知章节';
-                    // 🔥 核心亮点：利用 URL 查询参数传递精确定位数据
                     const targetUrl = `https://${s.subdomain || s.novel_id}.${novelDomain}?chapter=${encodeURIComponent(s.chapter_id)}&pos=${s.position}`;
                     
                     return `
@@ -483,7 +495,7 @@
             app.innerHTML = renderNavbar() + `
                 <div id="announcement-bar"></div>
                 
-                <div id="recent-grid-section" class="content-section" style="display: none;">
+                <div id="recent-grid-section" class="content-section" style="display: none; animation: fadeInContent 0.5s ease;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                         <h2 style="margin-bottom: 0;">⏱️ 继续阅读</h2>
                         <a href="#/profile?tab=history" class="btn btn-outline" style="padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.85rem;">全部记录 ➔</a>
@@ -491,7 +503,7 @@
                     <div id="recent-grid" class="recent-grid home-limit"></div>
                 </div>
 
-                <div class="content-section">
+                <div class="content-section" style="animation: fadeInContent 0.5s ease;">
                     <h2>📚 我的书库</h2>
                     <div id="novels-grid" class="card-grid"></div>
                 </div>`; 
@@ -532,7 +544,7 @@
                 const joinDateFormatted = formatLocalTime(createdStr);
 
                 app.innerHTML = renderNavbar() + `
-                    <div class="profile-header">
+                    <div class="profile-header" style="animation: fadeInContent 0.4s ease;">
                         <div class="profile-avatar">👤</div>
                         <div class="profile-info">
                             <h3>${userInfo.username} <span class="role-badge" style="color:${roleColor}; background:${roleBg};">${roleName}</span></h3>
@@ -543,7 +555,7 @@
                         </div>
                     </div>
 
-                    <div class="content-section" style="padding: 1.5rem 2.5rem;">
+                    <div class="content-section" style="padding: 1.5rem 2.5rem; animation: fadeInContent 0.5s ease;">
                         <div class="profile-tabs">
                             <button class="tab-btn active" onclick="switchProfileTab('overview')">📊 数据概览</button>
                             <button class="tab-btn" onclick="switchProfileTab('history')">⏱️ 阅读记录</button>
@@ -562,7 +574,6 @@
                             <div id="profile-history-list" class="history-list"></div>
                         </div>
 
-                        <!-- 🔥 修复后的喜欢段落栏目 -->
                         <div id="tab-snippets" class="tab-content">
                             <!-- 数据将由 fetchAndRenderSnippets 动态填充 -->
                         </div>
@@ -586,7 +597,7 @@
             if (!auth.isAdmin()) { router.navigate('/'); return; } 
             
             app.innerHTML = renderNavbar() + `
-                <div class="admin-section">
+                <div class="admin-section" style="animation: fadeInContent 0.4s ease;">
                     <h2>站点管理 <button class="btn btn-primary" style="font-size:0.85rem;" onclick="showSiteModal()">+ 新增站点</button></h2>
                     <div class="table-wrapper">
                         <table>
@@ -596,7 +607,7 @@
                     </div>
                 </div>
                 
-                <div class="admin-section">
+                <div class="admin-section" style="animation: fadeInContent 0.5s ease;">
                     <h2>用户管理 <button class="btn btn-primary" style="font-size:0.85rem;" onclick="showCreateUserModal()">+ 注册用户</button></h2>
                     <div class="table-wrapper">
                         <table>
@@ -606,7 +617,7 @@
                     </div>
                 </div>
                 
-                <div class="admin-section">
+                <div class="admin-section" style="animation: fadeInContent 0.6s ease;">
                     <h2>发布公告</h2>
                     <form id="global-announcement-form">
                         <div class="form-group"><textarea id="global-announcement" rows="3" required placeholder="输入公告内容..." style="resize:vertical;"></textarea></div>
