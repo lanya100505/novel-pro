@@ -148,7 +148,7 @@
         .stat-card .stat-label { font-size: 1.1rem; color: var(--text-secondary); font-weight: 600; }
         .stat-desc { color: #64748b; font-size: 0.95rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px dashed #a5b4fc; }
 
-        /* History List (Long Strip Format) */
+        /* History List */
         .history-list { display: flex; flex-direction: column; gap: 1rem; }
         .history-item { 
             display: flex; align-items: center; background: #fff; border: 1px solid var(--border-color); 
@@ -161,6 +161,26 @@
         .hi-info span { color: var(--text-secondary); font-size: 0.85rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .hi-progress-wrap { flex: 1; min-width: 150px; display: flex; flex-direction: column; justify-content: center; }
         .hi-time { flex: 1.2; text-align: right; color: #94a3b8; font-size: 0.85rem; font-family: monospace; }
+
+        /* 🔥 Snippets List (摘录栏目) */
+        .snippet-list { display: flex; flex-direction: column; gap: 1.25rem; }
+        .snippet-item { 
+            background: #fff; border: 1px solid var(--border-color); border-radius: 12px; 
+            padding: 1.5rem; transition: all 0.2s; box-shadow: var(--shadow-sm); position: relative; 
+        }
+        .snippet-item:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: #a5b4fc; }
+        .snippet-content { 
+            font-size: 1.05rem; color: var(--text-main); line-height: 1.7; font-style: italic; 
+            margin-bottom: 1.25rem; padding-left: 1rem; border-left: 4px solid var(--primary-color); 
+        }
+        .snippet-meta { 
+            display: flex; justify-content: space-between; align-items: center; 
+            border-top: 1px dashed var(--border-color); padding-top: 1rem; flex-wrap: wrap; gap: 1rem; 
+        }
+        .snippet-book { font-weight: 700; color: var(--primary-color); margin-right: 0.5rem; }
+        .snippet-chapter { font-size: 0.85rem; color: var(--text-secondary); }
+        .snippet-actions { display: flex; align-items: center; gap: 0.8rem; }
+        .snippet-time { font-size: 0.8rem; color: #94a3b8; font-family: monospace; }
 
         .empty-state {
             text-align: center; padding: 4rem 1rem; color: var(--text-secondary); font-weight: 500;
@@ -181,37 +201,19 @@
         .novel-card:hover::before { opacity: 1; }
         .novel-card h3 { margin: 0 0 1.25rem 0; font-size: 1.35rem; color: var(--text-main); font-weight: 700; line-height: 1.3; }
         
-        /* Details 核心动画样式 */
-        .novel-card details { 
-            margin-bottom: 1rem; border-radius: 10px; background-color: #f8fafc; 
-            border: 1px solid transparent; transition: all 0.3s ease; 
-        }
-        .novel-card details[open] { 
-            border-color: #e2e8f0; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.03); 
-        }
-        .novel-card summary { 
-            padding: 0.75rem 1rem; cursor: pointer; font-weight: 600; color: var(--text-secondary); 
-            font-size: 0.9rem; list-style: none; display: flex; justify-content: space-between; align-items: center; outline: none; 
-        }
+        .novel-card details { margin-bottom: 1rem; border-radius: 10px; background-color: #f8fafc; border: 1px solid transparent; transition: all 0.3s ease; }
+        .novel-card details[open] { border-color: #e2e8f0; background-color: #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.03); }
+        .novel-card summary { padding: 0.75rem 1rem; cursor: pointer; font-weight: 600; color: var(--text-secondary); font-size: 0.9rem; list-style: none; display: flex; justify-content: space-between; align-items: center; outline: none; }
         .novel-card summary:hover { color: var(--primary-color); }
         .novel-card summary::-webkit-details-marker { display: none; }
         .novel-card summary::after { content: '›'; font-size: 1.4em; color: #94a3b8; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .novel-card details[open] summary::after { transform: rotate(90deg); color: var(--primary-color); }
-        
-        .novel-card .details-content { 
-            padding: 0 1rem 1rem 1rem; font-size: 0.95rem; line-height: 1.7; 
-        }
-        
-        /* 增加平滑的展开动画效果：结合 max-height 和 translate */
-        .novel-card details[open] .details-content { 
-            animation: detailsSmoothExpand 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards;
-            overflow: hidden; 
-        }
+        .novel-card .details-content { padding: 0 1rem 1rem 1rem; font-size: 0.95rem; line-height: 1.7; }
+        .novel-card details[open] .details-content { animation: detailsSmoothExpand 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards; overflow: hidden; }
         @keyframes detailsSmoothExpand {
             0% { opacity: 0; max-height: 0; transform: translateY(-5px); padding-top: 0; padding-bottom: 0; }
             100% { opacity: 1; max-height: 800px; transform: translateY(0); padding-top: 0; padding-bottom: 1rem; }
         }
-
         .novel-card .btn { margin-top: auto; width: 100%; }
 
         /* Tables & Forms (Admin) */
@@ -236,7 +238,7 @@
         @keyframes fadeInContent { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
 
         /* =========================================
-           移动端适配 (核心修改区域) 
+           移动端适配 
            ========================================= */
         @media (max-width: 768px) {
             #app { padding: 0; }
@@ -253,22 +255,16 @@
             .profile-header > div:last-child { width: 100%; }
             .profile-header .btn { width: 100%; }
 
-            /* 移动端长条历史记录排版调整 */
             .history-item { flex-direction: column; align-items: flex-start; gap: 0.8rem; padding: 1.25rem; }
             .hi-progress-wrap { width: 100%; }
             .hi-time { text-align: left; width: 100%; border-top: 1px dashed var(--border-color); padding-top: 0.8rem; }
 
-            /* 强制移动端的书名和章节名换行，防止撑爆屏幕 */
-            .recent-card h4, 
-            .recent-card .chapter-name,
-            .hi-info h4, 
-            .hi-info span {
-                white-space: normal !important;
-                word-wrap: break-word !important;
-                word-break: break-all !important;
-                overflow: visible !important;
-                text-overflow: clip !important;
-                line-height: 1.5;
+            .snippet-meta { flex-direction: column; align-items: flex-start; }
+            .snippet-actions { width: 100%; justify-content: space-between; margin-top: 0.5rem; }
+
+            .recent-card h4, .recent-card .chapter-name, .hi-info h4, .hi-info span, .snippet-book, .snippet-chapter {
+                white-space: normal !important; word-wrap: break-word !important; word-break: break-all !important;
+                overflow: visible !important; text-overflow: clip !important; line-height: 1.5;
             }
 
             table, thead, tbody, th, td, tr { display: block; }
@@ -430,6 +426,58 @@
             } catch (e) { console.error('获取阅读记录失败:', e); }
         };
 
+        // --- Render Snippets (摘录) ---
+        const fetchAndRenderSnippets = async (containerId) => {
+            try {
+                const snippets = await apiRequest('/snippets');
+                const container = document.getElementById(containerId);
+                
+                if (!snippets || snippets.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <span style="font-size: 2.5rem; display: block; margin-bottom: 1rem;">✒️</span>
+                            暂无喜欢的段落，去阅读器里划线收藏吧！
+                        </div>`;
+                    return;
+                }
+
+                const novelDomain = getNovelDomain();
+                container.innerHTML = '<div class="snippet-list">' + snippets.map(s => {
+                    const cleanChapterName = s.chapter_id ? s.chapter_id.replace('.txt', '').replace(/^\d+_/, '') : '未知章节';
+                    // 🔥 核心亮点：利用 URL 查询参数传递精确定位数据
+                    const targetUrl = `https://${s.subdomain || s.novel_id}.${novelDomain}?chapter=${encodeURIComponent(s.chapter_id)}&pos=${s.position}`;
+                    
+                    return `
+                        <div class="snippet-item">
+                            <div class="snippet-content">"${s.content}"</div>
+                            <div class="snippet-meta">
+                                <div>
+                                    <span class="snippet-book">《${s.name || '未知书籍'}》</span>
+                                    <span class="snippet-chapter">${cleanChapterName}</span>
+                                </div>
+                                <div class="snippet-actions">
+                                    <span class="snippet-time">${formatLocalTime(s.created_at)}</span>
+                                    <a href="${targetUrl}" class="btn btn-primary" style="padding: 0.35rem 0.8rem; font-size: 0.85rem;" target="_blank">📍 定位原文</a>
+                                    <button class="btn btn-danger" style="padding: 0.35rem 0.8rem; font-size: 0.85rem;" onclick="handleDeleteSnippet(${s.id})">删除</button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('') + '</div>';
+            } catch (e) { console.error('获取摘录失败:', e); }
+        };
+
+        window.handleDeleteSnippet = async (id) => {
+            if (confirm('确定要删除这条摘录吗？')) {
+                try {
+                    await apiRequest(`/snippets/${id}`, 'DELETE');
+                    fetchAndRenderSnippets('tab-snippets'); // 重新渲染当前列表
+                } catch (e) {
+                    alert('删除失败: ' + e.message);
+                }
+            }
+        };
+
         // --- Pages ---
         const renderHomePage = async () => { 
             app.innerHTML = renderNavbar() + `
@@ -438,7 +486,6 @@
                 <div id="recent-grid-section" class="content-section" style="display: none;">
                     <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
                         <h2 style="margin-bottom: 0;">⏱️ 继续阅读</h2>
-                        <!-- 🔥 修复：使用 URL 参数传递 tab，解决异步渲染时序问题 -->
                         <a href="#/profile?tab=history" class="btn btn-outline" style="padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.85rem;">全部记录 ➔</a>
                     </div>
                     <div id="recent-grid" class="recent-grid home-limit"></div>
@@ -512,24 +559,21 @@
                         </div>
 
                         <div id="tab-history" class="tab-content">
-                            <div id="profile-history-list" class="history-list">
-                                <p style="color:#999; padding:1rem;">数据拉取中...</p>
-                            </div>
+                            <div id="profile-history-list" class="history-list"></div>
                         </div>
 
+                        <!-- 🔥 修复后的喜欢段落栏目 -->
                         <div id="tab-snippets" class="tab-content">
-                            <div class="empty-state">
-                                <span style="font-size: 2.5rem; display: block; margin-bottom: 1rem;">✒️</span>
-                                暂无喜欢的段落，摘录功能正在火热开发中敬请期待...
-                            </div>
+                            <!-- 数据将由 fetchAndRenderSnippets 动态填充 -->
                         </div>
                     </div>
                 `;
                 
-                // 等待DOM插入完成后，开始渲染阅读记录列表
+                // 加载两处列表数据
                 fetchAndRenderReadingRecords('profile-history-list', 'list');
+                fetchAndRenderSnippets('tab-snippets');
                 
-                // 🔥 修复：当 HTML 成功渲染完毕后，从全局参数中读取你要激活的 Tab，并立即切换
+                // 从全局参数中读取你要激活的 Tab，并立即切换
                 const activeTab = window.currentQueryParams?.get('tab') || 'overview';
                 switchProfileTab(activeTab);
 
@@ -636,7 +680,6 @@
                 const hash = window.location.hash.replace('#', '') || '/';
                 const [path, queryString] = hash.split('?'); 
                 
-                // 将查询参数存在全局对象里，方便组件内部读取
                 window.currentQueryParams = new URLSearchParams(queryString || '');
                 
                 (this.routes[path] || this.routes['/'])(); 
