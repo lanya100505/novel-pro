@@ -7,6 +7,7 @@
  * 4. 管理员创建用户 (POST /users)
  * 5. 公告/私信 (POST /announcements)
  * 6. 移除了公开注册接口
+ * 7. [新增] 进度管理: 获取用户近期所有阅读记录
  * ================================================================= */
 
 const ROOT_ADMIN_ID = 1;
@@ -166,6 +167,20 @@ async function handleApiRequest(context) {
                 await env.DB.prepare(stmt).bind(userId, novel_id, chapter_id, position).run();
                 return jsonResponse({ message: 'saved' }, 200, request);
             }
+            // 【新增】: 获取用户所有的最近阅读记录 (联表查询站点表获取书名)
+            if (request.method === 'GET' && !pathParts[1]) {
+                const stmt = `
+                    SELECT r.novel_id, r.chapter_id, r.position, r.updated_at, s.name, s.subdomain 
+                    FROM ReadingRecords r 
+                    LEFT JOIN Sites s ON r.novel_id = s.subdomain 
+                    WHERE r.user_id = ? 
+                    ORDER BY r.updated_at DESC 
+                    LIMIT 4
+                `;
+                const { results } = await env.DB.prepare(stmt).bind(userId).all();
+                return jsonResponse(results || [], 200, request);
+            }
+            // 获取具体某本书的进度
             if (request.method === 'GET' && pathParts[1]) {
                 const record = await env.DB.prepare("SELECT chapter_id, position FROM ReadingRecords WHERE user_id = ? AND novel_id = ?").bind(userId, pathParts[1]).first();
                 return jsonResponse(record || null, 200, request);
