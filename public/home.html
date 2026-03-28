@@ -257,6 +257,8 @@
             .navbar .nav-links a, .navbar .nav-links button.nav-btn { padding: 0.7rem 1.2rem; background: #f1f5f9; border-radius: 12px; font-size: 0.95rem; white-space: nowrap; flex-shrink: 0; flex-grow: 1; text-align: center; }
             .content-section, .admin-section { margin: 1rem; padding: 1.5rem; width: auto; border-radius: 16px; }
             
+            /* 🔥 修复网格溢出问题：解除 minmax 限制，让卡片在手机上自适应占满1列 */
+            .card-grid, .recent-grid { grid-template-columns: 1fr; gap: 1rem; }
             #recent-grid.home-limit .recent-card:nth-child(n+4) { display: none !important; }
             
             .profile-header { flex-direction: column; text-align: center; gap: 1.5rem; margin: 1rem; border-radius: 16px; padding: 2rem 1.5rem; }
@@ -285,8 +287,31 @@
             tr { margin-bottom: 1.2rem; border: 1px solid var(--border-color); border-radius: 16px; padding: 1.25rem; }
             td { border: none; padding: 0.5rem 0; display: flex; justify-content: space-between; align-items: center; text-align: right; }
             td:before { content: attr(data-label); font-weight: 600; color: var(--text-secondary); }
-            .actions { margin-top: 1.2rem; padding-top: 1.2rem; border-top: 1px solid #f1f5f9; display: flex; gap: 0.8rem; }
-            .actions button { margin: 0; flex: 1; }
+            
+            /* 🔥 修复表格操作按钮溢出问题：允许换行并合理分配空间 */
+            .actions { 
+                margin-top: 1.2rem; 
+                padding-top: 1.2rem; 
+                border-top: 1px solid #f1f5f9; 
+                display: flex; 
+                flex-wrap: wrap; /* 允许按钮换行 */
+                gap: 0.5rem; 
+                justify-content: flex-start;
+            }
+            /* 让“操作”标签独占一行，按钮自动排在下面 */
+            .actions:before {
+                width: 100%; 
+                text-align: left; 
+                margin-bottom: 0.5rem;
+            }
+            .actions button { 
+                margin: 0; 
+                flex: 1 1 calc(33.333% - 0.5rem); /* 每排最多放3个按钮 */
+                min-width: 60px; /* 最小宽度避免缩得太小 */
+                padding: 0.6rem 0.4rem; 
+                font-size: 0.85rem; 
+                white-space: nowrap;
+            }
         }
     </style>
 </head>
