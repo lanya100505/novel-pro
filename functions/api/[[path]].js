@@ -3,7 +3,7 @@
  * 支持:
  * 1. 登录 (POST /login)
  * 2. 站点管理 (CRUD /sites)
- * 3. 用户管理 (GET /users, DELETE /users/:id, PUT /users/:id/...)
+ * 3. 用户管理 (GET /users, DELETE /users/:id, PUT /users/:id/{password|status|role})
  * 4. 管理员创建用户 (POST /users)
  * 5. 公告/私信 (POST /announcements)
  * 6. 获取当前用户信息 (GET /users/me) 包含注册时间
@@ -108,7 +108,8 @@ async function handleApiRequest(context) {
             }
 
             if (request.method === 'PUT' && pathParts[1]) {
-                const targetId = parseInt(pathParts[1]);
+                const targetId = parseInt(pathParts[1], 10);
+                if (Number.isNaN(targetId)) return jsonResponse({ error: '无效ID' }, 400, request);
                 const action = pathParts[2]; 
                 const body = await request.json();
 
@@ -131,7 +132,8 @@ async function handleApiRequest(context) {
             
             if (request.method === 'DELETE' && pathParts[1]) {
                 if (user.role !== 'admin') return jsonResponse({ error: '无权操作' }, 403, request);
-                const targetId = parseInt(pathParts[1]);
+                const targetId = parseInt(pathParts[1], 10);
+                if (Number.isNaN(targetId)) return jsonResponse({ error: '无效ID' }, 400, request);
                 if (targetId === ROOT_ADMIN_ID || targetId === userId) return jsonResponse({ error: '无法删除该账户' }, 403, request);
                 await env.DB.prepare("DELETE FROM Users WHERE id = ?").bind(targetId).run();
                 return jsonResponse({ message: 'Deleted' }, 200, request);
@@ -214,7 +216,8 @@ async function handleApiRequest(context) {
             }
 
             if (request.method === 'DELETE' && pathParts[1]) {
-                const targetId = parseInt(pathParts[1]);
+                const targetId = parseInt(pathParts[1], 10);
+                if (Number.isNaN(targetId)) return jsonResponse({ error: '无效ID' }, 400, request);
                 await env.DB.prepare("DELETE FROM Snippets WHERE id = ? AND user_id = ?").bind(targetId, userId).run();
                 return jsonResponse({ message: 'Deleted' }, 200, request);
             }

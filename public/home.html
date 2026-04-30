@@ -217,11 +217,23 @@
         .novel-card summary::-webkit-details-marker { display: none; }
         .novel-card summary::after { content: '›'; font-size: 1.4em; color: #94a3b8; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .novel-card details[open] summary::after { transform: rotate(90deg); color: var(--primary-color); }
-        .novel-card .details-content { padding: 0 1rem 1rem 1rem; font-size: 0.95rem; line-height: 1.7; }
-        .novel-card details[open] .details-content { animation: detailsSmoothExpand 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards; overflow: hidden; }
-        @keyframes detailsSmoothExpand {
-            0% { opacity: 0; max-height: 0; transform: translateY(-5px); padding-top: 0; padding-bottom: 0; }
-            100% { opacity: 1; max-height: 800px; transform: translateY(0); padding-top: 0; padding-bottom: 1rem; }
+        .novel-card .details-content {
+            display: grid; grid-template-rows: 0fr;
+            padding: 0 1rem; font-size: 0.95rem; line-height: 1.7;
+            opacity: 0; transform: translateY(-6px) scale(0.98);
+            transition: grid-template-rows 0.38s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.24s ease, transform 0.38s cubic-bezier(0.22, 1, 0.36, 1), padding-bottom 0.38s ease;
+            will-change: transform, opacity;
+        }
+        .novel-card .details-content::before {
+            content: '';
+            min-height: 0;
+        }
+        .novel-card details[open] .details-content {
+            grid-template-rows: 1fr;
+            opacity: 1; transform: translateY(0) scale(1); padding-bottom: 1rem;
+        }
+        .novel-card .details-content > * {
+            overflow: hidden;
         }
         .novel-card .btn { margin-top: auto; width: 100%; }
 
@@ -542,8 +554,8 @@
                 document.getElementById('novels-grid').innerHTML = novels.length ? novels.map(n => `
                     <div class="novel-card">
                         <h3>${n.name}</h3>
-                        ${n.author ? `<details><summary>作者</summary><div class="details-content">${n.author}</div></details>` : ''}
-                        ${n.description ? `<details><summary>简介</summary><div class="details-content">${n.description}</div></details>` : ''}
+                        ${n.author ? `<details><summary>作者</summary><div class="details-content"><span>${n.author}</span></div></details>` : ''}
+                        ${n.description ? `<details><summary>简介</summary><div class="details-content"><span>${n.description}</span></div></details>` : ''}
                         <a href="https://${n.subdomain}.${novelDomain}" class="btn btn-primary" target="_blank">开始阅读</a>
                     </div>`).join('') : '<p style="text-align:center;color:#999;width:100%;grid-column:1/-1;padding:2rem;">暂无书籍。</p>'; 
             } catch (error) { 
