@@ -217,11 +217,13 @@
         .novel-card summary::-webkit-details-marker { display: none; }
         .novel-card summary::after { content: '›'; font-size: 1.4em; color: #94a3b8; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); }
         .novel-card details[open] summary::after { transform: rotate(90deg); color: var(--primary-color); }
-        .novel-card .details-content { padding: 0 1rem 1rem 1rem; font-size: 0.95rem; line-height: 1.7; }
-        .novel-card details[open] .details-content { animation: detailsSmoothExpand 0.4s cubic-bezier(0.4, 0, 0.2, 1) forwards; overflow: hidden; }
-        @keyframes detailsSmoothExpand {
-            0% { opacity: 0; max-height: 0; transform: translateY(-5px); padding-top: 0; padding-bottom: 0; }
-            100% { opacity: 1; max-height: 800px; transform: translateY(0); padding-top: 0; padding-bottom: 1rem; }
+        .novel-card .details-content {
+            padding: 0 1rem 0 1rem; font-size: 0.95rem; line-height: 1.7;
+            max-height: 0; opacity: 0; transform: translateY(-5px); overflow: hidden;
+            transition: max-height 0.4s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.25s ease, transform 0.4s cubic-bezier(0.4, 0, 0.2, 1), padding-bottom 0.4s ease;
+        }
+        .novel-card details[open] .details-content {
+            max-height: 800px; opacity: 1; transform: translateY(0); padding-bottom: 1rem;
         }
         .novel-card .btn { margin-top: auto; width: 100%; }
 
